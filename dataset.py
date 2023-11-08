@@ -27,7 +27,7 @@ class DatasetReader:
         data_list=[self.dataset[trajectory_ref[_]] for _ in range(n)]
         code_ref = self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][n,0]
         rtn= np.array(data_list).squeeze()
-        return rtn, np.array(self.dataset[code_ref])
+        return rtn, np.array(self.dataset[code_ref],dtype=np.float32)
                     
 
     def get_category(self,category_index:int)->Tuple[(np.array,np.array)]:
@@ -41,7 +41,7 @@ class DatasetReader:
         #     data_list=np.array([self.dataset[trajectory_ref[_]] for _ in range(n)]).squeeze()
             
         def get_array(trajectory_ref):
-            return np.array([self.dataset[self.dataset[trajectory_ref][_,0]] for _ in range(n)]).squeeze(), np.array(self.dataset[self.dataset[trajectory_ref][n,0]])
+            return np.array([self.dataset[self.dataset[trajectory_ref][_,0]] for _ in range(n)],dtype=np.float32).squeeze(), np.array(self.dataset[self.dataset[trajectory_ref][n,0]],dtype=np.int32)
         
         return map(get_array,trajectory_refs)
     
