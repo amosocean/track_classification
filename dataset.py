@@ -11,36 +11,39 @@ class DatasetReader:
     def __init__(self) -> None:
         # Open the MATLAB v7.3 file using h5py
         self.dataset = h5py.File(os.path.join(dir_path,'source/matlab/savedData.mat'), 'r')
-        self.dim_num=6
+        self.dim_num=4
         self.category_sahpe=self.dataset['sample_list'].shape
         
     def get_trajectory(self,category_index:int,trajectory_index:int)->Tuple[np.array]:
-        """返回一个[5,timestep_num]的np数组，5包括time x y v angle , 以及一个区域编码"""
-        
+        #"""返回一个[5,timestep_num]的np数组，5包括time x y v angle , 以及一个区域编码"""
+        """返回一个[5,timestep_num]的np数组，5包括x y v angle"""
         assert category_index <= self.category_sahpe[-1] and category_index>=0 , "category_index out of range"
         trajectory_shape=self.dataset[self.dataset['sample_list'][0,category_index]].shape
         assert trajectory_index <= trajectory_shape[-1] and trajectory_index>=0 , "trajectory_index out of range"
         
-        n=self.dim_num-1
+        #n=self.dim_num-1
+        n = self.dim_num
         trajectory_ref=self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][:,0]
         data_list=[self.dataset[trajectory_ref[_]] for _ in range(n)]
-        code_ref = self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][n,0]
+        #code_ref = self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][n,0]
         rtn= np.array(data_list,dtype=np.float32).squeeze()
-        return rtn, np.array(self.dataset[code_ref],dtype=np.int32)
-                    
+        #return rtn, np.array(self.dataset[code_ref],dtype=np.int32) 
+        return rtn            
 
     def get_category(self,category_index:int)->Tuple[(np.array,np.array)]:
-        "返回长度为轨迹数量的元组，每个元素是也是元组，第一个元素为轨迹array，第二个为区域编码"
-        
+        #"返回长度为轨迹数量的元组，每个元素是也是元组，第一个元素为轨迹array，第二个为区域编码"
+        "返回长度为轨迹数量的元组，每个元素是也是元组，第一个元素为轨迹array"
         assert category_index <= self.category_sahpe[-1] and category_index>=0 , "category_index out of range"
         
-        n=self.dim_num-1
+        #n=self.dim_num-1
+        n = self.dim_num
         trajectory_refs=self.dataset[self.dataset['sample_list'][0,category_index]][0,:]
         # for trajectory_ref in trajectory_refs:
         #     data_list=np.array([self.dataset[trajectory_ref[_]] for _ in range(n)]).squeeze()
             
         def get_array(trajectory_ref):
-            return np.array([self.dataset[self.dataset[trajectory_ref][_,0]] for _ in range(n)],dtype=np.float32).squeeze(), np.array(self.dataset[self.dataset[trajectory_ref][n,0]],dtype=np.int32)
+            #return np.array([self.dataset[self.dataset[trajectory_ref][_,0]] for _ in range(n)],dtype=np.float32).squeeze(), np.array(self.dataset[self.dataset[trajectory_ref][n,0]],dtype=np.int32)
+            return np.array([self.dataset[self.dataset[trajectory_ref][_,0]] for _ in range(n)],dtype=np.float32).squeeze()
         
         return map(get_array,trajectory_refs)
     
@@ -63,11 +66,13 @@ class SubDataset(Dataset):
         self.datareader = DatasetReader()
         self.category_index = category_index
 
-    def __getitem__(self,index):
+    def __getitem__(self,index)->(np.array,int):
         trajectory_index=index
-        (trajectory,zone_code)=self.datareader.get_trajectory(self.category_index,trajectory_index)
+        #(trajectory,zone_code)=self.datareader.get_trajectory(self.category_index,trajectory_index)
+        trajectory=self.datareader.get_trajectory(self.category_index,trajectory_index)
         
-        return (trajectory,zone_code) , self.category_index
+        #return (trajectory,zone_code) , self.category_index
+        return trajectory , self.category_index
 
     def __len__(self):
         return self.datareader.get_length_trajectory(self.category_index)
@@ -80,6 +85,6 @@ if __name__ == "__main__":
     # x=list(dataset.get_category(0))
     dataset_list = [SubDataset(i) for i in range(14)]
     dataset1=ConcatDataset(datasets=dataset_list)
-    mydata=DataLoader(dataset1,batch_size=1)
+    mydata=DataLoader(dataset1,batch_size=1,shuffle=True)
     t=tuple(mydata)
     print(t[0])
