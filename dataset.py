@@ -26,8 +26,8 @@ class DatasetReader:
         trajectory_ref=self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][:,0]
         data_list=[self.dataset[trajectory_ref[_]] for _ in range(n)]
         code_ref = self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][n,0]
-        rtn= np.array(data_list).squeeze()
-        return rtn, np.array(self.dataset[code_ref],dtype=np.float32)
+        rtn= np.array(data_list,dtype=np.float32).squeeze()
+        return rtn, np.array(self.dataset[code_ref],dtype=np.int32)
                     
 
     def get_category(self,category_index:int)->Tuple[(np.array,np.array)]:
@@ -50,14 +50,14 @@ class DatasetReader:
        
         return  self.category_sahpe[-1]
     
-    def get_length_trajectory(self,category_index:int)->Tuple[np.array]:
+    def get_length_trajectory(self,category_index:int)->int:
         """返回某类型的轨迹数量"""
         
         assert category_index <= self.category_sahpe[-1] and category_index>=0 , "category_index out of range"
         trajectory_shape=self.dataset[self.dataset['sample_list'][0,category_index]].shape
         return trajectory_shape[-1]
     
-class TrainDataset(Dataset):
+class SubDataset(Dataset):
     """针对某一个类别的dataset"""
     def __init__(self,category_index) -> None:
         super().__init__()    
@@ -72,12 +72,15 @@ class TrainDataset(Dataset):
 
     def __len__(self):
         return self.datareader.get_length_trajectory(self.category_index)
+    
+      
 
 if __name__ == "__main__":
     # dataset=Dataset()
     # print(dataset.get_trajectory(0,0))
     # x=list(dataset.get_category(0))
-    dataset1=TrainDataset(0)
+    dataset_list = [SubDataset(i) for i in range(14)]
+    dataset1=ConcatDataset(datasets=dataset_list)
     mydata=DataLoader(dataset1,batch_size=1)
-    t=list(mydata)
-    x=1
+    t=tuple(mydata)
+    print(t[0])
