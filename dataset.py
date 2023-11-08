@@ -35,6 +35,9 @@ class Dataset:
 
     def get_category(self,category_index:int)->Tuple[(np.array,np.array)]:
         "返回长度为轨迹数量的元组，每个元素是也是元组，第一个元素为轨迹array，第二个为区域编码"
+        category_sahpe=self.dataset['sample_list'].shape
+        assert category_index <= category_sahpe[-1] and category_index>=0 , "category_index out of range"
+        
         n=self.dim_num-1
         trajectory_refs=self.dataset[self.dataset['sample_list'][0,category_index]][0,:]
         # for trajectory_ref in trajectory_refs:
