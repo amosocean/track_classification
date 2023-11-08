@@ -17,12 +17,18 @@ class Dataset:
         # dots_ref=self.dataset[self.dataset[self.dataset['sample_list'][0,13]][0,246]][5,0]
         # print(np.array(self.dataset[dots_ref]))
         
-    def get_trajectory(self,category_index:int,sample_index:int)->Tuple[np.array]:
+    def get_trajectory(self,category_index:int,trajectory_index:int)->Tuple[np.array]:
         """返回一个[5,timestep_num]的np数组，5包括time x y v angle , 以及一个区域编码"""
+        
+        category_sahpe=self.dataset['sample_list'].shape
+        assert category_index <= category_sahpe[-1] and category_index>=0 , "category_index out of range"
+        trajectory_shape=self.dataset[self.dataset['sample_list'][0,category_index]].shape
+        assert trajectory_index <= trajectory_shape[-1] and trajectory_index>=0 , "trajectory_index out of range"
+        
         n=self.dim_num-1
-        trajectory_ref=self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,sample_index]][:,0]
+        trajectory_ref=self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][:,0]
         data_list=[self.dataset[trajectory_ref[_]] for _ in range(n)]
-        code_ref = self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,sample_index]][n,0]
+        code_ref = self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][n,0]
         rtn= np.array(data_list).squeeze()
         return rtn, np.array(self.dataset[code_ref])
                     
