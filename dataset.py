@@ -83,9 +83,42 @@ if __name__ == "__main__":
     # dataset=Dataset()
     # print(dataset.get_trajectory(0,0))
     # x=list(dataset.get_category(0))
+
+    from aeon.utils.validation.collection import convert_collection
+    import aeon.datasets
+    from aeon.datasets import write_to_tsfile
+    
     dataset_list = [SubDataset(i) for i in range(14)]
     dataset1=ConcatDataset(datasets=dataset_list)
-    mydata=DataLoader(dataset1,batch_size=1,shuffle=True)
-    t=tuple(mydata)
-    print(t[0])
-    print(len(t))
+    
+    # 将数据集分割成训练集和验证集
+    train_size = int(0.8 * len(dataset1))
+    valid_size = len(dataset1) - train_size
+    train_dataset, valid_dataset = torch.utils.data.random_split(dataset1, [train_size, valid_size])
+
+    mydata=DataLoader(train_dataset,batch_size=1,shuffle=False)
+    sample_list = []
+    category_index_list = []
+    for data in mydata:
+        sample=data[0].squeeze().numpy()
+        # t= np.isnan(sample)
+        # assert not np.any(t) , "Has Nan!"
+        sample_list.append(sample)
+        category_index_list.append(int(data[1].numpy()))
+
+    print(len(sample_list))
+    aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TRAIN")
+    #convert_collection(t,"df-list")
+    
+    mydata=DataLoader(valid_dataset,batch_size=1,shuffle=False)
+    sample_list = []
+    category_index_list = []
+    for data in mydata:
+        sample=data[0].squeeze().numpy()
+        t=np.isnan(sample)
+        assert not np.any(t) , "Has Nan!"
+        sample_list.append(sample)
+        category_index_list.append(int(data[1].numpy()))
+
+    print(len(sample_list))
+    aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TEST")
