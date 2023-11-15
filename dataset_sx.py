@@ -31,18 +31,22 @@ class DatasetReader:
             #code_ref = self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][n,0]
             rtn= np.array(data_list,dtype=np.float32).squeeze()
             rtn = np.transpose(rtn)
-            if len(rtn)<50:
-                continue
-            res.append(self.sliding_window(rtn, 50, 50))
+            if len(rtn)<128:
+                rtn = rtn.T
+                res.extend([rtn,])
+            else:
+                rtn = np.transpose(self.sliding_window(rtn, 128, 128),[0,2,1])
+                temp =[*rtn]
+                res.extend(temp)
 
-        rres = np.concatenate(res,axis=0)
-        rres = np.transpose(rres,[0,2,1])
+        # rres = np.concatenate(res,axis=0)
+        # rres = np.transpose(rres,[0,2,1])
         # np.random.seed(10)
         # np.random.shuffle(rres)
         # rres_train = rres[0:int(len(rres)*0.7),:,:]
         # rres_test = rres[int(len(rres)*0.7):,:,:]
         #return rtn, np.array(self.dataset[code_ref],dtype=np.int32) 
-        return rres            
+        return res            
 
     def get_category(self,category_index:int)->Tuple[(np.array,np.array)]:
         #"返回长度为轨迹数量的元组，每个元素是也是元组，第一个元素为轨迹array，第二个为区域编码"
@@ -92,7 +96,7 @@ class SubDataset(Dataset):
         
     def read_data(self):
         self.trajectory=self.datareader.get_trajectory(self.category_index)
-        self.trajectory_num = self.trajectory.shape[0]
+        self.trajectory_num = len(self.trajectory)
         
         
         
