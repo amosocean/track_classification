@@ -6,6 +6,8 @@ from typing import Dict,List,Tuple
 dir_path="/home/amos/haitun/pycode/"
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader,ConcatDataset
+"""该程序讨论二分类"""
+
 class DatasetReader:
 
     def __init__(self) -> None:
