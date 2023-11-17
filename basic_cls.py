@@ -42,13 +42,6 @@ class DatasetReader:
                 res.extend(temp)
 
         res = padder.fit_transform(res)
-        # rres = np.concatenate(res,axis=0)
-        # rres = np.transpose(rres,[0,2,1])
-        # np.random.seed(10)
-        # np.random.shuffle(rres)
-        # rres_train = rres[0:int(len(rres)*0.7),:,:]
-        # rres_test = rres[int(len(rres)*0.7):,:,:]
-        #return rtn, np.array(self.dataset[code_ref],dtype=np.int32) 
         return res            
 
     def get_trajectory_datasets(self,category_index:int)->Tuple[Dataset]:
@@ -56,27 +49,26 @@ class DatasetReader:
         assert category_index <= self.category_sahpe[-1] and category_index>=0 , "category_index out of range"
         trajectory_shape=self.dataset[self.dataset['sample_list'][0,category_index]].shape
         
+        n = self.dim_num
         res = []
         for index in range(trajectory_shape[-1]):
 
-            n = self.dim_num
             trajectory_ref=self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,index]][:,0]
             data_list=[self.dataset[trajectory_ref[_]] for _ in range(n)]
             #code_ref = self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][n,0]
+            padder=PaddingTransformer(self.window_len,fill_value=0)
             rtn= np.array(data_list,dtype=np.float32).squeeze()
             rtn = np.transpose(rtn)
             if len(rtn)<self.window_len:
-                continue
                 rtn = rtn.T
                 res.extend([rtn,])
             else:
-                rtn = np.transpose(self.sliding_window(rtn, self.window_len,self.window_strip),[0,2,1])
+                rtn = np.transpose(self.sliding_window(rtn, self.window_len, self.window_strip),[0,2,1])
                 temp =[*rtn]
                 res.extend(temp)
-        
-        
 
-        return res  
+        res = padder.fit_transform(res)
+        return res            
         
     def get_category(self,category_index:int)->Tuple[(np.array,np.array)]:
         #"返回长度为轨迹数量的元组，每个元素是也是元组，第一个元素为轨迹array，第二个为区域编码"
