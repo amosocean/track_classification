@@ -14,7 +14,7 @@ class DatasetReader:
         self.dim_num=4
         self.category_sahpe=self.dataset['sample_list'].shape
         
-    def get_trajectory(self,category_index:int,trajectory_index:int)->Tuple[np.array]:
+    def get_trajectorys(self,category_index:int,trajectory_index:int)->Tuple[np.array]:
         #"""返回一个[5,timestep_num]的np数组，5包括time x y v angle , 以及一个区域编码"""
         """返回一个[5,timestep_num]的np数组，5包括x y v angle"""
         assert category_index <= self.category_sahpe[-1] and category_index>=0 , "category_index out of range"
@@ -68,8 +68,8 @@ class SubDataset(Dataset):
 
     def __getitem__(self,index)->(np.array,int):
         trajectory_index=index
-        #(trajectory,zone_code)=self.datareader.get_trajectory(self.category_index,trajectory_index)
-        trajectory=self.datareader.get_trajectory(self.category_index,trajectory_index)
+        #(trajectory,zone_code)=self.datareader.get_trajectorys(self.category_index,trajectory_index)
+        trajectory=self.datareader.get_trajectorys(self.category_index,trajectory_index)
         
         #return (trajectory,zone_code) , self.category_index
         return trajectory , self.category_index
@@ -81,7 +81,7 @@ class SubDataset(Dataset):
 
 if __name__ == "__main__":
     # dataset=Dataset()
-    # print(dataset.get_trajectory(0,0))
+    # print(dataset.get_trajectorys(0,0))
     # x=list(dataset.get_category(0))
 
     from aeon.utils.validation.collection import convert_collection

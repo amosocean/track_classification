@@ -31,11 +31,12 @@ class DatasetReader:
             #code_ref = self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][n,0]
             rtn= np.array(data_list,dtype=np.float32).squeeze()
             rtn = np.transpose(rtn)
-            if len(rtn)<256:
+            if len(rtn)<128:
+                continue
                 rtn = rtn.T
                 res.extend([rtn,])
             else:
-                rtn = np.transpose(self.sliding_window(rtn, 256, 256),[0,2,1])
+                rtn = np.transpose(self.sliding_window(rtn, 128, 128),[0,2,1])
                 temp =[*rtn]
                 res.extend(temp)
 
@@ -107,8 +108,12 @@ class SubDataset(Dataset):
         
         trajectory = self.trajectory[index]
         #return (trajectory,zone_code) , self.category_index
+        #return trajectory , self.category_index
+        # if self.category_index == 5 or self.category_index == 9 or self.category_index == 10 or self.category_index == 12:
+        #     index = 1
+        # else:
+        #     index = 0
         return trajectory , self.category_index
-
     def __len__(self):
         #return self.datareader.get_length_trajectory(self.category_index)
         return self.trajectory_num
@@ -117,25 +122,16 @@ class SubDataset(Dataset):
 if __name__ == "__main__":
     import aeon.datasets
     from aeon.datasets import write_to_tsfile
+    from aeon.classification.feature_based import Catch22Classifier,TSFreshClassifier
+    from aeon.classification.hybrid import HIVECOTEV2
+    from aeon.classification.shapelet_based import ShapeletTransformClassifier
+    from sklearn.ensemble import RandomForestClassifier
     # dataset=Dataset()
     # print(dataset.get_trajectorys(0,0))
     # x=list(dataset.get_category(0))
     dataset_list = [SubDataset(i) for i in range(14)]
-    dataset_list.extend([SubDataset(i) for i in [4,4,4,9,9,9,10,10,10,12,12,12]])
-
     dataset1=ConcatDataset(datasets=dataset_list)
-    # mydata=DataLoader(dataset1,batch_size=1,shuffle=True)
-    # for index, (x, y) in enumerate(mydata):
-    #     x=x
-    #     y=y
-    #     print(index)
 
-
-
-    # t=tuple(mydata)
-    # print(t[0])
-    # print(len(t))
-    
      # 将数据集分割成训练集和验证集
     train_size = int(0.8 * len(dataset1))
     valid_size = len(dataset1) - train_size
@@ -152,9 +148,9 @@ if __name__ == "__main__":
         category_index_list.append(int(data[1].numpy()))
 
     print(len(sample_list))
-    aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TRAIN")
-    #convert_collection(t,"df-list")
-    
+
+    X_train=np.array(sample_list)
+    y_train = np.array(category_index_list)
     mydata=DataLoader(valid_dataset,batch_size=1,shuffle=False)
     sample_list = []
     category_index_list = []
@@ -166,4 +162,56 @@ if __name__ == "__main__":
         category_index_list.append(int(data[1].numpy()))
 
     print(len(sample_list))
-    aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TEST")
+
+    clfs= []
+    clfs.append(TSFreshClassifier(estimator=RandomForestClassifier(n_estimators=5),n_jobs=16))
+    clfs.append(Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5),n_jobs=16))
+    clfs.append(ShapeletTransformClassifier(estimator=RandomForestClassifier(n_estimators=5),n_jobs=16))
+    clfs.append(HIVECOTEV2(n_jobs=16))
+    X=np.array(sample_list)
+    y = np.array(category_index_list)
+    
+    for clf in clfs:
+        clf.fit(X_train, y_train)   
+        
+        
+    #     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TEST")
+        
+        result = clf.predict(X)
+        
+        from sklearn.metrics import confusion_matrix
+        conf_mat = confusion_matrix(y, result)
+
+        print(conf_mat)
+        
+        from sklearn.metrics import precision_score, recall_score, f1_score,accuracy_score
+
+        # 假设 y_true 是真实的标签，y_pred 是预测的标签
+        y_true = y
+        y_pred = result
+
+        precision = precision_score(y_true, y_pred, average='macro')
+        accuraccy = accuracy_score(y_true, y_pred)
+        recall = recall_score(y_true, y_pred, average='macro')
+        f1 = f1_score(y_true, y_pred, average='macro')
+
+        print('Precision: {}'.format(precision))
+        print('Accuraccy: {}'.format(accuraccy))
+        print('Recall: {}'.format(recall))
+        print('F1 Score: {}'.format(f1))
+        
+        # clf.score(X,y)
+    
+#     from aeon.classification.feature_based import Catch22Classifier
+# from sklearn.ensemble import RandomForestClassifier
+# from aeon.datasets import make_example_3d_numpy
+# X, y = make_example_3d_numpy(n_cases=10, n_channels=1, n_timepoints=12,
+#                              return_y=True, random_state=0)
+# clf = Catch22Classifier(
+#     estimator=RandomForestClassifier(n_estimators=5),
+#     outlier_norm=True,
+#     random_state=0,
+# )
+# clf.fit(X, y)
+
+# clf.predict(X)

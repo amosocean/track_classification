@@ -31,11 +31,11 @@ class DatasetReader:
             #code_ref = self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][n,0]
             rtn= np.array(data_list,dtype=np.float32).squeeze()
             rtn = np.transpose(rtn)
-            if len(rtn)<256:
+            if len(rtn)<128:
                 rtn = rtn.T
                 res.extend([rtn,])
             else:
-                rtn = np.transpose(self.sliding_window(rtn, 256, 256),[0,2,1])
+                rtn = np.transpose(self.sliding_window(rtn, 128, 128),[0,2,1])
                 temp =[*rtn]
                 res.extend(temp)
 
@@ -107,8 +107,12 @@ class SubDataset(Dataset):
         
         trajectory = self.trajectory[index]
         #return (trajectory,zone_code) , self.category_index
-        return trajectory , self.category_index
-
+        #return trajectory , self.category_index
+        if self.category_index == 5 or self.category_index == 9 or self.category_index == 10 or self.category_index == 12:
+            index = 1
+        else:
+            index = 0
+        return trajectory , index
     def __len__(self):
         #return self.datareader.get_length_trajectory(self.category_index)
         return self.trajectory_num
@@ -121,8 +125,6 @@ if __name__ == "__main__":
     # print(dataset.get_trajectorys(0,0))
     # x=list(dataset.get_category(0))
     dataset_list = [SubDataset(i) for i in range(14)]
-    dataset_list.extend([SubDataset(i) for i in [4,4,4,9,9,9,10,10,10,12,12,12]])
-
     dataset1=ConcatDataset(datasets=dataset_list)
     # mydata=DataLoader(dataset1,batch_size=1,shuffle=True)
     # for index, (x, y) in enumerate(mydata):

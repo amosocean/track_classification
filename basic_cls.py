@@ -14,7 +14,7 @@ class DatasetReader:
         self.dim_num=5
         self.category_sahpe=self.dataset['sample_list'].shape
         
-    def get_trajectory(self,category_index:int)->Tuple[np.array]:
+    def get_trajectorys(self,category_index:int)->Tuple[np.array]:
         #"""返回一个[5,timestep_num]的np数组，5包括time x y v angle , 以及一个区域编码"""
         """返回一个[5,timestep_num]的np数组，5包括x y v angle"""
         assert category_index <= self.category_sahpe[-1] and category_index>=0 , "category_index out of range"
@@ -96,7 +96,7 @@ class SubDataset(Dataset):
         self.read_data()
         
     def read_data(self):
-        self.trajectory=self.datareader.get_trajectory(self.category_index)
+        self.trajectory=self.datareader.get_trajectorys(self.category_index)
         self.trajectory_num = len(self.trajectory)
         
         
@@ -104,7 +104,7 @@ class SubDataset(Dataset):
 
     def __getitem__(self,index)->(np.array,int):
         
-        #(trajectory,zone_code)=self.datareader.get_trajectory(self.category_index,trajectory_index)
+        #(trajectory,zone_code)=self.datareader.get_trajectorys(self.category_index,trajectory_index)
         
         trajectory = self.trajectory[index]
         #return (trajectory,zone_code) , self.category_index
@@ -119,7 +119,12 @@ class SubDataset(Dataset):
         #return self.datareader.get_length_trajectory(self.category_index)
         return self.trajectory_num
     
-
+class Trajectory_Dataset(SubDataset):
+    
+    def read_data(self):
+        self.trajectory=self.datareader.get_trajectorys(self.category_index)
+        self.trajectory_num = len(self.trajectory)
+    
 if __name__ == "__main__":
     import aeon.datasets
     from aeon.datasets import write_to_tsfile
@@ -128,9 +133,10 @@ if __name__ == "__main__":
     from aeon.classification.shapelet_based import ShapeletTransformClassifier
     from sklearn.ensemble import RandomForestClassifier
     # dataset=Dataset()
-    # print(dataset.get_trajectory(0,0))
+    # print(dataset.get_trajectorys(0,0))
     # x=list(dataset.get_category(0))
     dataset_list = [SubDataset(i) for i in range(14)]
+    dataset_list.extend([SubDataset(i) for i in [4,4,4,9,9,9,10,10,10,12,12,12]])
     dataset1=ConcatDataset(datasets=dataset_list)
     # mydata=DataLoader(dataset1,batch_size=1,shuffle=True)
     # for index, (x, y) in enumerate(mydata):
