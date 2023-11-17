@@ -131,11 +131,12 @@ class SubDataset(Dataset):
         #return (trajectory,zone_code) , self.category_index
         #return trajectory , self.
         #return trajectory , self.category_index
-        if self.category_index == 5 or self.category_index == 9 or self.category_index == 10 or self.category_index == 12:
-            index = 1
-        else:
-            index = 0
-        return trajectory , index
+        # if self.category_index == 5 or self.category_index == 9 or self.category_index == 10 or self.category_index == 12:
+        #     index = 1
+        # else:
+        #     index = 0
+        # return trajectory , index
+        return trajectory , self.category_index
     def __len__(self):
         #return self.datareader.get_length_trajectory(self.category_index)
         return self.trajectory_num
