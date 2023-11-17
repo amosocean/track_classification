@@ -44,7 +44,7 @@ class DatasetReader:
         res = padder.fit_transform(res)
         return res            
 
-    def get_trajectory_datasets(self,category_index:int)->Tuple[Dataset]:
+    def get_trajectorys(self,category_index:int)->Tuple[Dataset]:
         """返回一个元组，包含含有多个单一完整轨迹的SubDataset，对于某个类型"""
         assert category_index <= self.category_sahpe[-1] and category_index>=0 , "category_index out of range"
         trajectory_shape=self.dataset[self.dataset['sample_list'][0,category_index]].shape
@@ -60,14 +60,13 @@ class DatasetReader:
             rtn= np.array(data_list,dtype=np.float32).squeeze()
             rtn = np.transpose(rtn)
             if len(rtn)<self.window_len:
-                rtn = rtn.T
-                res.extend([rtn,])
+                rtn = np.transpose(rtn[np.newaxis,:,:],[0,2,1])
+                rtn = padder.fit_transform(rtn)
+                res.append(rtn)
             else:
                 rtn = np.transpose(self.sliding_window(rtn, self.window_len, self.window_strip),[0,2,1])
-                temp =[*rtn]
-                res.extend(temp)
-
-        res = padder.fit_transform(res)
+                temp =rtn
+                res.append(rtn)
         return res            
         
     def get_category(self,category_index:int)->Tuple[(np.array,np.array)]:
@@ -149,6 +148,7 @@ class Trajectory_Dataset(SubDataset):
     
 if __name__ == "__main__":
     import aeon.datasets
+    from torch.utils.data import Subset
     from aeon.datasets import write_to_tsfile
     from aeon.classification.feature_based import Catch22Classifier,TSFreshClassifier
     from aeon.classification.hybrid import HIVECOTEV2
@@ -166,8 +166,16 @@ if __name__ == "__main__":
     #     y=y
     #     print(index)
 
+#%% 
+# """调试用，缩小数据集"""
+#     def random_subset(dataset, fraction):
+#         length = len(dataset)
+#         indices = np.random.choice(np.arange(length), size=int(fraction * length), replace=False)
+#         return Subset(dataset, indices)
 
-
+#     # 假设 dataset 是你的原始数据集
+#     dataset1 = random_subset(dataset1, 0.1)
+#%%
     # t=tuple(mydata)
     # print(t[0])
     # print(len(t))
@@ -181,11 +189,13 @@ if __name__ == "__main__":
     sample_list = []
     category_index_list = []
     for data in mydata:
-        sample=data[0].squeeze().numpy()
+        sample=data[0].squeeze(dim=0).numpy()
         # t= np.isnan(sample)
         # assert not np.any(t) , "Has Nan!"
         sample_list.append(sample)
-        category_index_list.append(int(data[1].numpy()))
+        category_index = int(data[1].numpy())
+        category_index_vector = np.tile(category_index, sample.shape[0])
+        category_index_list.append(category_index_vector)
 
     print(len(sample_list))
     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TRAIN")
@@ -197,59 +207,68 @@ if __name__ == "__main__":
     n_jobs=16
 )
     #clf = Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5))
-    X=np.array(sample_list)
-    y = np.array(category_index_list)
+    #X=np.array(sample_list)
+    X = np.concatenate(sample_list,axis=0)
+    y = np.concatenate(category_index_list,axis=0)
     clf.fit(X, y)   
     
     mydata=DataLoader(valid_dataset,batch_size=1,shuffle=False)
     sample_list = []
     category_index_list = []
     for data in mydata:
-        sample=data[0].squeeze().numpy()
-        t=np.isnan(sample)
-        assert not np.any(t) , "Has Nan!"
+        sample=data[0].squeeze(dim=0).numpy()
+        # t= np.isnan(sample)
+        # assert not np.any(t) , "Has Nan!"
         sample_list.append(sample)
-        category_index_list.append(int(data[1].numpy()))
+        category_index = int(data[1].numpy())
+        category_index_vector = np.tile(category_index, sample.shape[0])
+        category_index_list.append(category_index_vector)
 
     print(len(sample_list))
 #     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TEST")
-    X=np.array(sample_list)
-    y = np.array(category_index_list)
-    result = clf.predict(X)
+
+    def predict_vote_func(predictions:List[np.array])->np.array:
+        # 使用 numpy 的 unique 函数来获取所有唯一的预测值及它们的数量
+        unique, counts = np.unique(predictions, return_counts=True)
+
+        # 使用 numpy 的 argmax 函数来获取得票最多的预测值的索引
+        max_votes_index = np.argmax(counts)
+
+        # 使用索引返回得票最多的预测值
+        return unique[max_votes_index]
+
+    def valid_func(clf,X_list:List,y_list:List)->None:
+        
+        pack = zip(X_list,y_list)
+        label_list = []
+        predict_list = []
+        for X,y in pack:
+
+            result = clf.predict(X)
+            label_list.append(y[0])
+            predict_list.append(predict_vote_func(result))
+            
     
-    from sklearn.metrics import confusion_matrix
-    conf_mat = confusion_matrix(y, result)
-
-    print(conf_mat)
     
-    from sklearn.metrics import precision_score, recall_score, f1_score,accuracy_score
+        from sklearn.metrics import confusion_matrix
+        conf_mat = confusion_matrix(np.array(label_list), np.array(predict_list))
 
-    # 假设 y_true 是真实的标签，y_pred 是预测的标签
-    y_true = y
-    y_pred = result
+        print(conf_mat)
+        
+        from sklearn.metrics import precision_score, recall_score, f1_score,accuracy_score
 
-    precision = precision_score(y_true, y_pred, average='macro')
-    accuraccy = accuracy_score(y_true, y_pred)
-    recall = recall_score(y_true, y_pred, average='macro')
-    f1 = f1_score(y_true, y_pred, average='macro')
+        # 假设 y_true 是真实的标签，y_pred 是预测的标签
+        y_true = np.array(label_list)
+        y_pred = np.array(predict_list)
 
-    print('Precision: {}'.format(precision))
-    print('Accuraccy: {}'.format(accuraccy))
-    print('Recall: {}'.format(recall))
-    print('F1 Score: {}'.format(f1))
-    
-    #clf.score(X,y_true)
-    
-#     from aeon.classification.feature_based import Catch22Classifier
-# from sklearn.ensemble import RandomForestClassifier
-# from aeon.datasets import make_example_3d_numpy
-# X, y = make_example_3d_numpy(n_cases=10, n_channels=1, n_timepoints=12,
-#                              return_y=True, random_state=0)
-# clf = Catch22Classifier(
-#     estimator=RandomForestClassifier(n_estimators=5),
-#     outlier_norm=True,
-#     random_state=0,
-# )
-# clf.fit(X, y)
+        precision = precision_score(y_true, y_pred, average='macro')
+        accuraccy = accuracy_score(y_true, y_pred)
+        recall = recall_score(y_true, y_pred, average='macro')
+        f1 = f1_score(y_true, y_pred, average='macro')
 
-# clf.predict(X)
+        print('Precision: {}'.format(precision))
+        print('Accuraccy: {}'.format(accuraccy))
+        print('Recall: {}'.format(recall))
+        print('F1 Score: {}'.format(f1))
+
+    valid_func(clf=clf,X_list=sample_list,y_list=category_index_list)
