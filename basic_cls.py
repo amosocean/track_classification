@@ -6,12 +6,15 @@ from typing import Dict,List,Tuple
 dir_path="/home/amos/haitun/pycode/"
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader,ConcatDataset
+from aeon.transformations.collection.pad import PaddingTransformer
 class DatasetReader:
 
     def __init__(self) -> None:
         # Open the MATLAB v7.3 file using h5py
         self.dataset = h5py.File(os.path.join(dir_path,'source/matlab/savedData.mat'), 'r')
         self.dim_num=5
+        self.window_len = 128
+        self.window_strip = 128
         self.category_sahpe=self.dataset['sample_list'].shape
         
     def get_trajectorys(self,category_index:int)->Tuple[np.array]:
@@ -20,26 +23,25 @@ class DatasetReader:
         assert category_index <= self.category_sahpe[-1] and category_index>=0 , "category_index out of range"
         trajectory_shape=self.dataset[self.dataset['sample_list'][0,category_index]].shape
         
-        
+        n = self.dim_num
         res = []
         for index in range(trajectory_shape[-1]):
 
-        #n=self.dim_num-1
-            n = self.dim_num
             trajectory_ref=self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,index]][:,0]
             data_list=[self.dataset[trajectory_ref[_]] for _ in range(n)]
             #code_ref = self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][n,0]
+            padder=PaddingTransformer(self.window_len,fill_value=0)
             rtn= np.array(data_list,dtype=np.float32).squeeze()
             rtn = np.transpose(rtn)
-            if len(rtn)<128:
-                continue
+            if len(rtn)<self.window_len:
                 rtn = rtn.T
                 res.extend([rtn,])
             else:
-                rtn = np.transpose(self.sliding_window(rtn, 128, 128),[0,2,1])
+                rtn = np.transpose(self.sliding_window(rtn, self.window_len, self.window_strip),[0,2,1])
                 temp =[*rtn]
                 res.extend(temp)
 
+        res = padder.fit_transform(res)
         # rres = np.concatenate(res,axis=0)
         # rres = np.transpose(rres,[0,2,1])
         # np.random.seed(10)
@@ -49,6 +51,33 @@ class DatasetReader:
         #return rtn, np.array(self.dataset[code_ref],dtype=np.int32) 
         return res            
 
+    def get_trajectory_datasets(self,category_index:int)->Tuple[Dataset]:
+        """返回一个元组，包含含有多个单一完整轨迹的SubDataset，对于某个类型"""
+        assert category_index <= self.category_sahpe[-1] and category_index>=0 , "category_index out of range"
+        trajectory_shape=self.dataset[self.dataset['sample_list'][0,category_index]].shape
+        
+        res = []
+        for index in range(trajectory_shape[-1]):
+
+            n = self.dim_num
+            trajectory_ref=self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,index]][:,0]
+            data_list=[self.dataset[trajectory_ref[_]] for _ in range(n)]
+            #code_ref = self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][n,0]
+            rtn= np.array(data_list,dtype=np.float32).squeeze()
+            rtn = np.transpose(rtn)
+            if len(rtn)<self.window_len:
+                continue
+                rtn = rtn.T
+                res.extend([rtn,])
+            else:
+                rtn = np.transpose(self.sliding_window(rtn, self.window_len,self.window_strip),[0,2,1])
+                temp =[*rtn]
+                res.extend(temp)
+        
+        
+
+        return res  
+        
     def get_category(self,category_index:int)->Tuple[(np.array,np.array)]:
         #"返回长度为轨迹数量的元组，每个元素是也是元组，第一个元素为轨迹array，第二个为区域编码"
         "返回长度为轨迹数量的元组，每个元素是也是元组，第一个元素为轨迹array"
@@ -172,6 +201,7 @@ if __name__ == "__main__":
     estimator=RandomForestClassifier(n_estimators=5),
     outlier_norm=True,
     random_state=0,
+    n_jobs=16
 )
     #clf = Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5))
     X=np.array(sample_list)
