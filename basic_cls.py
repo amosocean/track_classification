@@ -162,12 +162,12 @@ if __name__ == "__main__":
     print(len(sample_list))
     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TRAIN")
     #convert_collection(t,"df-list")
-#     clf = Catch22Classifier(
-#     estimator=RandomForestClassifier(n_estimators=5),
-#     outlier_norm=True,
-#     random_state=0,
-# )
-    clf = Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5))
+    clf = Catch22Classifier(
+    estimator=RandomForestClassifier(n_estimators=5),
+    outlier_norm=True,
+    random_state=0,
+)
+    #clf = Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5))
     X=np.array(sample_list)
     y = np.array(category_index_list)
     clf.fit(X, y)   
