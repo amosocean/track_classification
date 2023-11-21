@@ -177,11 +177,19 @@ if __name__ == "__main__":
     import aeon.datasets
     from torch.utils.data import Subset
     from aeon.datasets import write_to_tsfile
-    from aeon.classification.feature_based import Catch22Classifier,TSFreshClassifier
+    from aeon.classification.feature_based import Catch22Classifier,TSFreshClassifier,FreshPRINCEClassifier,MatrixProfileClassifier,SignatureClassifier,SummaryClassifier
+    from aeon.classification.interval_based import CanonicalIntervalForestClassifier
     from aeon.classification.hybrid import HIVECOTEV2
     from aeon.classification.shapelet_based import ShapeletTransformClassifier
     from aeon.classification.distance_based import ElasticEnsemble
-    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.ensemble import RandomForestClassifier,AdaBoostClassifier
+    from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.svm import SVC
+    from sklearn.neural_network import MLPClassifier
+    from sklearn.tree import DecisionTreeClassifier
+    from sklearn.naive_bayes import GaussianNB
+    from sklearn.gaussian_process import GaussianProcessClassifier
+    from sklearn.gaussian_process.kernels import RBF
     # dataset=Dataset()
     # print(dataset.get_trajectorys(0,0))
     # x=list(dataset.get_category(0))
@@ -232,12 +240,13 @@ if __name__ == "__main__":
     print(len(sample_list))
     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TRAIN")
     #convert_collection(t,"df-list")
-    clf = Catch22Classifier(
-    estimator=RandomForestClassifier(n_estimators=5),
-    outlier_norm=True,
-    random_state=0,
-    n_jobs=16,
-)
+#     clf = Catch22Classifier(
+#     estimator= RandomForestClassifier(max_depth=50, n_estimators=10, max_features=2, random_state=42),
+#     outlier_norm=True,
+#     random_state=0,
+#     n_jobs=16,
+# )
+    clf = CanonicalIntervalForestClassifier(base_estimator=RandomForestClassifier(n_estimators=5))
     #clf = Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5))
 #     clf = ElasticEnsemble(
 #     proportion_of_param_options=0.1,
