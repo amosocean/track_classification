@@ -3,15 +3,15 @@ import numpy as np
 import h5py
 import torch
 from typing import Dict,List,Tuple
-dir_path="/home/amos/haitun/pycode/"
+dir_path="/home/amos/haitun/pycode/source/matlab/"
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader,ConcatDataset
 from aeon.transformations.collection.pad import PaddingTransformer
 class DatasetReader:
 
-    def __init__(self) -> None:
+    def __init__(self,matfile_name:str) -> None:
         # Open the MATLAB v7.3 file using h5py
-        self.dataset = h5py.File(os.path.join(dir_path,'source/matlab/savedData.mat'), 'r')
+        self.dataset = h5py.File(os.path.join(dir_path,matfile_name), 'r')
         self.dim_num=5
         self.window_len = 128
         self.window_strip = 128
@@ -108,9 +108,9 @@ class DatasetReader:
         return new_matrix
 class SubDataset(Dataset):
     """针对某一个类别的dataset"""
-    def __init__(self,category_index) -> None:
+    def __init__(self,category_index,datareader) -> None:
         super().__init__()    
-        self.datareader = DatasetReader()
+        self.datareader = datareader 
         self.category_index = category_index
         self.trajectory_num = None
         self.read_data()
@@ -146,6 +146,14 @@ class Trajectory_Dataset(SubDataset):
         self.trajectory=self.datareader.get_trajectorys(self.category_index)
         self.trajectory_num = len(self.trajectory)
     
+class SubTrainDataset(SubDataset):
+    def __init__(self, category_index) -> None:
+        super().__init__(category_index,DatasetReader(matfile_name="train.mat"))
+
+class SubTestDataset(SubDataset):
+    def __init__(self, category_index) -> None:
+        super().__init__(category_index,DatasetReader(matfile_name="test.mat"))
+        
 if __name__ == "__main__":
     import aeon.datasets
     from torch.utils.data import Subset
@@ -158,9 +166,12 @@ if __name__ == "__main__":
     # dataset=Dataset()
     # print(dataset.get_trajectorys(0,0))
     # x=list(dataset.get_category(0))
-    dataset_list = [SubDataset(i) for i in range(14)]
-    dataset_list.extend([SubDataset(i) for i in [4,4,4,9,9,9,10,10,10,12,12,12]])
-    dataset1=ConcatDataset(datasets=dataset_list)
+    dataset_list = [SubTrainDataset(i) for i in range(14)]
+    dataset_list.extend([SubTrainDataset(i) for i in [5,5,5,9,9,9,12,12,12]])
+    train_dataset=ConcatDataset(datasets=dataset_list)
+    
+    dataset_list = [SubTestDataset(i) for i in range(14)]
+    valid_dataset=ConcatDataset(datasets=dataset_list)
     # mydata=DataLoader(dataset1,batch_size=1,shuffle=True)
     # for index, (x, y) in enumerate(mydata):
     #     x=x
@@ -182,9 +193,9 @@ if __name__ == "__main__":
     # print(len(t))
     
      # 将数据集分割成训练集和验证集
-    train_size = int(0.8 * len(dataset1))
-    valid_size = len(dataset1) - train_size
-    train_dataset, valid_dataset = torch.utils.data.random_split(dataset1, [train_size, valid_size])
+    # train_size = int(0.8 * len(dataset1))
+    # valid_size = len(dataset1) - train_size
+    # train_dataset, valid_dataset = torch.utils.data.random_split(dataset1, [train_size, valid_size])
 
     mydata=DataLoader(train_dataset,batch_size=1,shuffle=False)
     sample_list = []
@@ -202,11 +213,10 @@ if __name__ == "__main__":
     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TRAIN")
     #convert_collection(t,"df-list")
     clf = Catch22Classifier(
-    estimator=RandomForestClassifier(n_estimators=15),
+    estimator=RandomForestClassifier(n_estimators=5),
     outlier_norm=True,
     random_state=0,
     n_jobs=16,
-    features=["DN_HistogramMode_5", "DN_HistogramMode_10", "SB_BinaryStats_diff_longstretch0", "DN_OutlierInclude_p_001_mdrmd", "DN_OutlierInclude_n_001_mdrmd", "CO_f1ecac", "CO_FirstMin_ac", "SP_Summaries_welch_rect_area_5_1", "SP_Summaries_welch_rect_centroid", "FC_LocalSimple_mean3_stderr", "CO_trev_1_num", "CO_HistogramAMI_even_2_5", "IN_AutoMutualInfoStats_40_gaussian_fmmi", "MD_hrv_classic_pnn40"]
 )
     #clf = Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5))
 #     clf = ElasticEnsemble(
@@ -245,6 +255,13 @@ if __name__ == "__main__":
         # 使用索引返回得票最多的预测值
         return unique[max_votes_index]
 
+    def predict_prob_func(predictions:np.array)->np.array:
+         # 计算每种class的总概率
+        class_probabilities=np.sum(predictions,axis=0)
+        # 找出概率最大的class的标签
+        most_probable_class_label = np.argmax(class_probabilities)
+        return most_probable_class_label
+    
     def valid_func(clf,X_list:List,y_list:List)->None:
         
         pack = zip(X_list,y_list)
@@ -253,8 +270,9 @@ if __name__ == "__main__":
         for X,y in pack:
 
             result = clf.predict(X)
+            result_prob = clf.predict_proba(X)
             label_list.append(y[0])
-            predict_list.append(predict_vote_func(result))
+            predict_list.append(predict_prob_func(result_prob))
             
     
     
