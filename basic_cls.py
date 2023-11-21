@@ -153,6 +153,7 @@ if __name__ == "__main__":
     from aeon.classification.feature_based import Catch22Classifier,TSFreshClassifier
     from aeon.classification.hybrid import HIVECOTEV2
     from aeon.classification.shapelet_based import ShapeletTransformClassifier
+    from aeon.classification.distance_based import ElasticEnsemble
     from sklearn.ensemble import RandomForestClassifier
     # dataset=Dataset()
     # print(dataset.get_trajectorys(0,0))
@@ -201,12 +202,19 @@ if __name__ == "__main__":
     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TRAIN")
     #convert_collection(t,"df-list")
     clf = Catch22Classifier(
-    estimator=RandomForestClassifier(n_estimators=5),
+    estimator=RandomForestClassifier(n_estimators=15),
     outlier_norm=True,
     random_state=0,
-    n_jobs=16
+    n_jobs=16,
+    features=["DN_HistogramMode_5", "DN_HistogramMode_10", "SB_BinaryStats_diff_longstretch0", "DN_OutlierInclude_p_001_mdrmd", "DN_OutlierInclude_n_001_mdrmd", "CO_f1ecac", "CO_FirstMin_ac", "SP_Summaries_welch_rect_area_5_1", "SP_Summaries_welch_rect_centroid", "FC_LocalSimple_mean3_stderr", "CO_trev_1_num", "CO_HistogramAMI_even_2_5", "IN_AutoMutualInfoStats_40_gaussian_fmmi", "MD_hrv_classic_pnn40"]
 )
     #clf = Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5))
+#     clf = ElasticEnsemble(
+#     proportion_of_param_options=0.1,
+#     proportion_train_for_test=0.1,
+#     distance_measures = ["dtw","ddtw"],
+#     majority_vote=True,
+# )
     #X=np.array(sample_list)
     X = np.concatenate(sample_list,axis=0)
     y = np.concatenate(category_index_list,axis=0)
