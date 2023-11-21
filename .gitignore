@@ -1,1 +1,7 @@
 source/
+dataset/haitun_TRAIN.ts
+.gitignore
+.gitignore
+dataset/Train.ts
+dataset/Valid.ts
+dataset/haitun_TEST.ts
