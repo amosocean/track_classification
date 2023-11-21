@@ -44,7 +44,7 @@ class DatasetReader:
         res = padder.fit_transform(res)
         return res            
 
-    def get_trajectorys(self,category_index:int)->Tuple[Dataset]:
+    def get_trajectorys(self,category_index:int)->Tuple:
         """返回一个元组，包含含有多个单一完整轨迹的SubDataset，对于某个类型"""
         assert category_index <= self.category_sahpe[-1] and category_index>=0 , "category_index out of range"
         trajectory_shape=self.dataset[self.dataset['sample_list'][0,category_index]].shape
@@ -67,7 +67,26 @@ class DatasetReader:
                 rtn = np.transpose(self.sliding_window(rtn, self.window_len, self.window_strip),[0,2,1])
                 temp =rtn
                 res.append(rtn)
-        return res            
+        return res
+    
+    def get_trajectorys(self,category_index:int)->Tuple:
+        """返回无滑窗的变长轨迹list"""
+        assert category_index <= self.category_sahpe[-1] and category_index>=0 , "category_index out of range"
+        trajectory_shape=self.dataset[self.dataset['sample_list'][0,category_index]].shape
+        
+        n = self.dim_num
+        res = []
+        for index in range(trajectory_shape[-1]):
+
+            trajectory_ref=self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,index]][:,0]
+            data_list=[self.dataset[trajectory_ref[_]] for _ in range(n)]
+            #code_ref = self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][n,0]
+            padder=PaddingTransformer(self.window_len,fill_value=0)
+            rtn= np.array(data_list,dtype=np.float32).squeeze()
+            rtn = np.transpose(rtn)
+            rtn = np.transpose(rtn,[1,0])
+            res.append(rtn)
+        return res              
         
     def get_category(self,category_index:int)->Tuple[(np.array,np.array)]:
         #"返回长度为轨迹数量的元组，每个元素是也是元组，第一个元素为轨迹array，第二个为区域编码"
@@ -167,7 +186,7 @@ if __name__ == "__main__":
     # print(dataset.get_trajectorys(0,0))
     # x=list(dataset.get_category(0))
     dataset_list = [SubTrainDataset(i) for i in range(14)]
-    dataset_list.extend([SubTrainDataset(i) for i in [5,5,5,9,9,9,12,12,12]])
+    #dataset_list.extend([SubTrainDataset(i) for i in [5,5,5,9,9,9,12,12,12]])
     train_dataset=ConcatDataset(datasets=dataset_list)
     
     dataset_list = [SubTestDataset(i) for i in range(14)]
@@ -207,7 +226,8 @@ if __name__ == "__main__":
         sample_list.append(sample)
         category_index = int(data[1].numpy())
         category_index_vector = np.tile(category_index, sample.shape[0])
-        category_index_list.append(category_index_vector)
+        category_index_list.append(category_index)
+        #category_index_list.append(category_index_vector)
 
     print(len(sample_list))
     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TRAIN")
@@ -226,8 +246,10 @@ if __name__ == "__main__":
 #     majority_vote=True,
 # )
     #X=np.array(sample_list)
-    X = np.concatenate(sample_list,axis=0)
-    y = np.concatenate(category_index_list,axis=0)
+    # X = np.concatenate(sample_list,axis=0)
+    X=sample_list
+    #y = np.concatenate(category_index_list,axis=0)
+    y = np.array(category_index_list)
     clf.fit(X, y)   
     
     mydata=DataLoader(valid_dataset,batch_size=1,shuffle=False)
@@ -240,7 +262,8 @@ if __name__ == "__main__":
         sample_list.append(sample)
         category_index = int(data[1].numpy())
         category_index_vector = np.tile(category_index, sample.shape[0])
-        category_index_list.append(category_index_vector)
+        category_index_list.append(category_index)
+        #category_index_list.append(category_index_vector)
 
     print(len(sample_list))
 #     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TEST")
@@ -267,12 +290,15 @@ if __name__ == "__main__":
         pack = zip(X_list,y_list)
         label_list = []
         predict_list = []
-        for X,y in pack:
+        # for X,y in pack:
 
-            result = clf.predict(X)
-            result_prob = clf.predict_proba(X)
-            label_list.append(y[0])
-            predict_list.append(predict_prob_func(result_prob))
+        #     result = clf.predict(X)
+        #     result_prob = clf.predict_proba(X)
+        #     label_list.append(y[0])
+        #     predict_list.append(predict_prob_func(result_prob))
+        
+        predict_list = clf.predict(X_list)
+        label_list = y_list
             
     
     
