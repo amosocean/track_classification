@@ -12,7 +12,7 @@ class DatasetReader:
     def __init__(self,matfile_name:str) -> None:
         # Open the MATLAB v7.3 file using h5py
         self.dataset = h5py.File(os.path.join(dir_path,matfile_name), 'r')
-        self.dim_num=5
+        self.dim_num=4
         self.window_len = 128
         self.window_strip = 128
         self.category_sahpe=self.dataset['sample_list'].shape
@@ -182,6 +182,7 @@ if __name__ == "__main__":
     from aeon.classification.hybrid import HIVECOTEV2
     from aeon.classification.shapelet_based import ShapeletTransformClassifier
     from aeon.classification.distance_based import ElasticEnsemble
+    from aeon.transformations.collection import Catch22
     from sklearn.ensemble import RandomForestClassifier,AdaBoostClassifier
     from sklearn.neighbors import KNeighborsClassifier
     from sklearn.svm import SVC
@@ -190,6 +191,9 @@ if __name__ == "__main__":
     from sklearn.naive_bayes import GaussianNB
     from sklearn.gaussian_process import GaussianProcessClassifier
     from sklearn.gaussian_process.kernels import RBF
+    from sklearn.decomposition import PCA
+    from aeon.classification.compose import WeightedEnsembleClassifier
+    from utils.fea import kinetic_feature
     # dataset=Dataset()
     # print(dataset.get_trajectorys(0,0))
     # x=list(dataset.get_category(0))
@@ -224,7 +228,7 @@ if __name__ == "__main__":
     # valid_size = len(dataset1) - train_size
     # train_dataset, valid_dataset = torch.utils.data.random_split(dataset1, [train_size, valid_size])
 
-    mydata=DataLoader(train_dataset,batch_size=1,shuffle=False)
+    mydata=DataLoader(train_dataset,batch_size=1,shuffle=True)
     sample_list = []
     category_index_list = []
     for data in mydata:
@@ -246,7 +250,14 @@ if __name__ == "__main__":
 #     random_state=0,
 #     n_jobs=16,
 # )
-    clf = CanonicalIntervalForestClassifier(base_estimator=RandomForestClassifier(n_estimators=5))
+# # %%
+#     sample_list = sample_list[0:3]
+#     category_index_list = category_index_list[0:3]
+# %%
+    tnf = Catch22(outlier_norm=True,catch24=True,replace_nans=True,n_jobs=-1,parallel_backend="loky")
+    clf_1 = RandomForestClassifier(n_estimators=5,n_jobs=-1)
+    clf_2 = RandomForestClassifier(n_estimators=5,n_jobs=-1)
+    pca = PCA(n_components=1)
     #clf = Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5))
 #     clf = ElasticEnsemble(
 #     proportion_of_param_options=0.1,
@@ -259,7 +270,14 @@ if __name__ == "__main__":
     X=sample_list
     #y = np.concatenate(category_index_list,axis=0)
     y = np.array(category_index_list)
-    clf.fit(X, y)   
+    
+    dynamic_features = np.array(kinetic_feature(X,n_jobs=16))
+    catch22_features = np.array(tnf.fit_transform(X))
+    #catch22_features = pca.fit_transform(catch22_features)
+    #all_features = np.concatenate([dynamic_features,catch22_features],axis=-1)
+    
+    clf_1.fit(dynamic_features, y)
+    clf_2.fit(catch22_features,y)   
     
     mydata=DataLoader(valid_dataset,batch_size=1,shuffle=False)
     sample_list = []
@@ -273,6 +291,11 @@ if __name__ == "__main__":
         category_index_vector = np.tile(category_index, sample.shape[0])
         category_index_list.append(category_index)
         #category_index_list.append(category_index_vector)
+
+# # %%
+#     sample_list = sample_list[0:2]
+#     category_index_list = category_index_list[0:2]
+# # %%
 
     print(len(sample_list))
 #     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TEST")
@@ -305,8 +328,20 @@ if __name__ == "__main__":
         #     result_prob = clf.predict_proba(X)
         #     label_list.append(y[0])
         #     predict_list.append(predict_prob_func(result_prob))
+        dynamic_features = np.array(kinetic_feature(X_list,n_jobs=16))
+        catch22_features = np.array(tnf.fit_transform(X_list))
         
-        predict_list = clf.predict(X_list)
+        #clf_all = WeightedEnsembleClassifier([clf_1,clf_2])
+        
+        #catch22_features = pca.fit_transform(catch22_features)
+        # all_features = np.concatenate([dynamic_features,catch22_features],axis=-1)
+        # predict_list = clf.predict(all_features)
+        clf_1,clf_2 = clf
+        prob1 = clf_1.predict_proba(dynamic_features)
+        prob2 = clf_2.predict_proba(catch22_features)
+        prob = prob1+prob2
+        
+        predict_list = np.argmax(prob,axis=1)
         label_list = y_list
             
     
@@ -332,4 +367,4 @@ if __name__ == "__main__":
         print('Recall: {}'.format(recall))
         print('F1 Score: {}'.format(f1))
 
-    valid_func(clf=clf,X_list=sample_list,y_list=category_index_list)
+    valid_func(clf=[clf_1,clf_2],X_list=sample_list,y_list=category_index_list)
