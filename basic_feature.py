@@ -158,7 +158,6 @@ if __name__ == "__main__":
     import aeon.datasets
     from torch.utils.data import Subset
     from aeon.datasets import write_to_tsfile
-    from aeon.classification.convolution_based import *
     from aeon.classification.dictionary_based import *
     from aeon.classification.feature_based import Catch22Classifier,TSFreshClassifier
     from aeon.classification.interval_based import *
@@ -170,6 +169,7 @@ if __name__ == "__main__":
     from aeon.classification.compose import WeightedEnsembleClassifier
     from sklearn.ensemble import RandomForestClassifier
     from aeon.transformations.collection import Catch22
+    from aeon.transformations.collection.convolution_based import *
     # dataset=Dataset()
     # print(dataset.get_trajectorys(0,0))
     # x=list(dataset.get_category(0))
@@ -218,29 +218,27 @@ if __name__ == "__main__":
 
     print(len(sample_list))
     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TRAIN")
-    #convert_collection(t,"df-list")
-#     clf = Catch22Classifier(
-#     estimator=RandomForestClassifier(n_estimators=5),
-#     outlier_norm=True,
-#     random_state=0,
-#     n_jobs=16,
-# )
-    # clfs =[Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5)),]
-    # clf = WeightedEnsembleClassifier(clfs)
-    clf = RocketClassifier(num_kernels=100,rocket_transform="multirocket",estimator=RandomForestClassifier(n_estimators=5),n_jobs=-1)
-    #clf = HIVECOTEV2(n_jobs=-1,parallel_backend="loky") 
-    #clf  = Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5),outlier_norm=True,parallel_backend="loky",n_jobs=-1)
-#     clf = ElasticEnsemble(
-#     proportion_of_param_options=0.1,
-#     proportion_train_for_test=0.1,
-#     distance_measures = ["dtw","ddtw"],
-#     majority_vote=True,
-# )
+    
+
+    clfs =None
+    clf = None
+    #clf = Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5),use_pycatch22=True)
+    #tnf = Catch22(replace_nans=False,outlier_norm=True,parallel_backend="loky",n_jobs=-1)
+    tnf = MultiRocketMultivariate(num_kernels=6250,n_jobs=-1)
+    clf = RandomForestClassifier(n_estimators=10,n_jobs=-1)
     #X=np.array(sample_list)
     X = np.concatenate(sample_list,axis=0)
     y = np.concatenate(category_index_list,axis=0)
-    clf.fit(X, y)   
+    # clf.fit(X, y)  
+    print("before fit")
+    tnf.fit(X) 
+    print("end fit")
+    features = tnf.transform(X)
+    print(features)
     
+    
+    clf.fit(features,y)
+     
     mydata=DataLoader(valid_dataset,batch_size=1,shuffle=False)
     sample_list = []
     category_index_list = []
@@ -278,11 +276,13 @@ if __name__ == "__main__":
         pack = zip(X_list,y_list)
         label_list = []
         predict_list = []
-        for X,y in pack:
-
-            #result = clf.predict(X)
+        for i,(X,y) in enumerate(pack):
             if X.shape[0] == 1:
-                X = np.concatenate((X, X), axis=0)
+                continue
+                X = np.tile(X,[500,1,1])
+            #X = X.squeeze()
+            X= tnf.transform(X)
+            result = clf.predict(X)
             result_prob = clf.predict_proba(X)
             label_list.append(y[0])
             predict_list.append(predict_prob_func(result_prob))
