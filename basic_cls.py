@@ -255,8 +255,8 @@ if __name__ == "__main__":
 #     category_index_list = category_index_list[0:3]
 # %%
     tnf = Catch22(outlier_norm=True,catch24=True,replace_nans=True,n_jobs=-1,parallel_backend="loky")
-    clf_1 = RandomForestClassifier(n_estimators=5,n_jobs=-1)
-    clf_2 = RandomForestClassifier(n_estimators=5,n_jobs=-1)
+    clf_1 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
+    clf_2 = RandomForestClassifier(n_estimators=50,n_jobs=-1)
     pca = PCA(n_components=1)
     #clf = Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5))
 #     clf = ElasticEnsemble(
@@ -272,12 +272,12 @@ if __name__ == "__main__":
     y = np.array(category_index_list)
     
     dynamic_features = np.array(kinetic_feature(X,n_jobs=16))
-    catch22_features = np.array(tnf.fit_transform(X))
+    #catch22_features = np.array(tnf.fit_transform(X))
     #catch22_features = pca.fit_transform(catch22_features)
     #all_features = np.concatenate([dynamic_features,catch22_features],axis=-1)
     
     clf_1.fit(dynamic_features, y)
-    clf_2.fit(catch22_features,y)   
+    #clf_2.fit(catch22_features,y)   
     
     mydata=DataLoader(valid_dataset,batch_size=1,shuffle=False)
     sample_list = []
@@ -329,7 +329,7 @@ if __name__ == "__main__":
         #     label_list.append(y[0])
         #     predict_list.append(predict_prob_func(result_prob))
         dynamic_features = np.array(kinetic_feature(X_list,n_jobs=16))
-        catch22_features = np.array(tnf.fit_transform(X_list))
+        #catch22_features = np.array(tnf.fit_transform(X_list))
         
         #clf_all = WeightedEnsembleClassifier([clf_1,clf_2])
         
@@ -338,8 +338,8 @@ if __name__ == "__main__":
         # predict_list = clf.predict(all_features)
         clf_1,clf_2 = clf
         prob1 = clf_1.predict_proba(dynamic_features)
-        prob2 = clf_2.predict_proba(catch22_features)
-        prob = prob1+prob2
+        #prob2 = clf_2.predict_proba(catch22_features)
+        prob = prob1
         
         predict_list = np.argmax(prob,axis=1)
         label_list = y_list
