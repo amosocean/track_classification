@@ -5,7 +5,8 @@ def _kinetic_feature(single_sample):
     points = lat+1j*lon
     # lat,lon,v,angle 为输入的单个轨迹的
     # 长度
-    distances = np.abs(np.diff(points))
+    diff = np.diff(points)
+    distances = np.abs(diff)
     dis = np.sum(distances)
     # 最大距离
     distances = np.abs(points[1:] - points[0])
@@ -38,10 +39,15 @@ def _kinetic_feature(single_sample):
     mid_222 = lon[int(end/4)*3]
     
     #角度与位移角度偏差
-    
-    
+    theta = angle*np.pi/180
+    unit_complex = np.exp(1j * theta)
+    angle_diff = np.angle(diff/unit_complex[1:])
+    angle_diff_max = np.max(angle_diff)
+    angle_diff_mean = np.mean(angle_diff)
     feature_list = [dis,zhucai_fea,start_1,start_2,mid_1,mid_2,
-                    end_1,end_2,mean_v,max_v,mean_rate_v,max_rate_v,var_rate_v,min_rate_v,mid_11,mid_22,mid_111,mid_222]
+                    end_1,end_2,mean_v,max_v,mean_rate_v,max_rate_v,
+                    var_rate_v,min_rate_v,mid_11,mid_22,mid_111,mid_222,
+                    angle_diff_max,angle_diff_mean]
     
     feature = np.array(feature_list)
     
