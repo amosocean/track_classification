@@ -2,14 +2,13 @@ import numpy as np
 from multiprocessing.dummy import Pool as TreadPool
 def _kinetic_feature(single_sample):
     lat,lon,v,angle = single_sample[0:4]
-
+    points = lat+1j*lon
     # lat,lon,v,angle 为输入的单个轨迹的
     # 长度
-    distances = np.sqrt(np.diff(lat)**2 + np.diff(lon)**2)
+    distances = np.abs(np.diff(points))
     dis = np.sum(distances)
     # 最大距离
-    points = np.array([lat, lon]).T
-    distances = np.sqrt(np.sum(np.square(points[1:] - points[0]), axis=1))
+    distances = np.abs(points[1:] - points[0])
     max_distance = np.max(distances)
     #主菜比
     zhucai_fea = dis / max_distance
@@ -38,6 +37,9 @@ def _kinetic_feature(single_sample):
     mid_111 = lat[int(end/4)*3]
     mid_222 = lon[int(end/4)*3]
     
+    #角度与位移角度偏差
+    
+    
     feature_list = [dis,zhucai_fea,start_1,start_2,mid_1,mid_2,
                     end_1,end_2,mean_v,max_v,mean_rate_v,max_rate_v,var_rate_v,min_rate_v,mid_11,mid_22,mid_111,mid_222]
     
@@ -55,6 +57,6 @@ def kinetic_feature(sample_list,n_jobs:int = 1):
         return list(features)
 
 if __name__ == "__main__":
-    sample = np.random.rand(100000,5,120)
+    sample = np.random.rand(10,5,120)
     
-    print(kinetic_feature(sample,n_jobs=20))
+    print(kinetic_feature(sample,n_jobs=1))
