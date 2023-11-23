@@ -16,8 +16,9 @@ def _kinetic_feature(single_sample):
     #坐标点
     start_1 = lat[0]
     start_2 = lon[0]
-    mid1 = len(lat)//2
-    mid2 = len(lon)//2
+    end =  len(lat)-1
+    mid1 = int(end/2)
+    mid2 = int(end/2)
     mid_1 = lat[mid1]
     mid_2 = lon[mid2]
     end_1 = lat[-1]
@@ -32,8 +33,13 @@ def _kinetic_feature(single_sample):
     var_rate_v = np.var(rate_v)
     min_rate_v = np.min(rate_v)
     
-    feature_list = [dis,zhucai_fea,start_1,start_2,mid1,mid2,
-                    end_1,end_2,mean_v,max_v,mean_rate_v,max_rate_v,var_rate_v,min_rate_v]
+    mid_11 = lat[int(end/4)]
+    mid_22 = lon[int(end/4)]
+    mid_111 = lat[int(end/4)*3]
+    mid_222 = lon[int(end/4)*3]
+    
+    feature_list = [dis,zhucai_fea,start_1,start_2,mid_1,mid_2,
+                    end_1,end_2,mean_v,max_v,mean_rate_v,max_rate_v,var_rate_v,min_rate_v,mid_11,mid_22,mid_111,mid_222]
     
     feature = np.array(feature_list)
     
