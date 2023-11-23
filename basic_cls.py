@@ -12,7 +12,7 @@ class DatasetReader:
     def __init__(self,matfile_name:str) -> None:
         # Open the MATLAB v7.3 file using h5py
         self.dataset = h5py.File(os.path.join(dir_path,matfile_name), 'r')
-        self.dim_num=4
+        self.dim_num=6
         self.window_len = 128
         self.window_strip = 128
         self.category_sahpe=self.dataset['sample_list'].shape
@@ -81,8 +81,7 @@ class DatasetReader:
             trajectory_ref=self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,index]][:,0]
             data_list=[self.dataset[trajectory_ref[_]] for _ in range(n)]
             #code_ref = self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][n,0]
-            padder=PaddingTransformer(self.window_len,fill_value=0)
-            rtn= np.array(data_list,dtype=np.float32).squeeze()
+            rtn= np.array(data_list[0:5],dtype=np.float32).squeeze()
             rtn = np.transpose(rtn)
             rtn = np.transpose(rtn,[1,0])
             res.append(rtn)
@@ -149,11 +148,11 @@ class SubDataset(Dataset):
         #return (trajectory,zone_code) , self.category_index
         #return trajectory , self.
         #return trajectory , self.category_index
-        # if self.category_index == 5 or self.category_index == 9 or self.category_index == 10 or self.category_index == 12:
-        #     index = 1
-        # else:
-        #     index = 0
-        # return trajectory , index
+        if self.category_index == 5 or self.category_index == 9 or self.category_index == 10 or self.category_index == 12:
+            index = 1
+        else:
+            index = 0
+        return trajectory , self.category_index, index
         return trajectory , self.category_index
     def __len__(self):
         #return self.datareader.get_length_trajectory(self.category_index)
@@ -231,15 +230,22 @@ if __name__ == "__main__":
     mydata=DataLoader(train_dataset,batch_size=1,shuffle=True)
     sample_list = []
     category_index_list = []
+    category_index_01_list = []
     for data in mydata:
+        
+        category_index = int(data[1].numpy())
+        #category_index_vector = np.tile(category_index, sample.shape[0])
+        category_index_list.append(category_index)
+        
+        category_index_01 = int(data[2].numpy())
+        #category_index_vector = np.tile(category_index, sample.shape[0])
+        category_index_01_list.append(category_index)
+        #category_index_list.append(category_index_vector)
+        
         sample=data[0].squeeze(dim=0).numpy()
         # t= np.isnan(sample)
         # assert not np.any(t) , "Has Nan!"
         sample_list.append(sample)
-        category_index = int(data[1].numpy())
-        category_index_vector = np.tile(category_index, sample.shape[0])
-        category_index_list.append(category_index)
-        #category_index_list.append(category_index_vector)
 
     print(len(sample_list))
     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TRAIN")
@@ -255,6 +261,8 @@ if __name__ == "__main__":
 #     category_index_list = category_index_list[0:3]
 # %%
     tnf = Catch22(outlier_norm=True,catch24=True,replace_nans=True,n_jobs=-1,parallel_backend="loky")
+    clf_01 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
+    clf_0 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
     clf_1 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
     clf_2 = RandomForestClassifier(n_estimators=50,n_jobs=-1)
     pca = PCA(n_components=1)
@@ -276,7 +284,8 @@ if __name__ == "__main__":
     #catch22_features = pca.fit_transform(catch22_features)
     #all_features = np.concatenate([dynamic_features,catch22_features],axis=-1)
     
-    clf_1.fit(dynamic_features, y)
+    clf_0.fit(dynamic_features, y)
+    clf_01.fit(dynamic_features,y)
     #clf_2.fit(catch22_features,y)   
     
     mydata=DataLoader(valid_dataset,batch_size=1,shuffle=False)
@@ -319,6 +328,47 @@ if __name__ == "__main__":
     
     def valid_func(clf,X_list:List,y_list:List)->None:
         
+        def get_01_label(label_list:List):
+            """从14分类中直接获取2分类"""
+            # 二分类处理
+            label_01 = np.array([*label_list[:]], dtype=np.int32)
+            indices = np.where((label_01 == 5) | (label_01 == 9) | (
+                label_01 == 10) | (label_01 == 12))
+
+            if not indices[0].size == 0:
+                # 将它们置为类别1:
+                label_01[indices] = 1
+
+            # 将剩余的类别都置为0
+            other_indices = np.where((label_01 != 1))
+            label_01[other_indices] = 0
+            rtn = label_01.tolist()
+            return rtn
+        
+        #%%
+        def print_matrix(label_list,predict_list):
+            from sklearn.metrics import confusion_matrix
+            conf_mat = confusion_matrix(np.array(label_list), np.array(predict_list))
+
+            print(conf_mat)
+            
+            from sklearn.metrics import precision_score, recall_score, f1_score,accuracy_score
+
+            # 假设 y_true 是真实的标签，y_pred 是预测的标签
+            y_true = np.array(label_list)
+            y_pred = np.array(predict_list)
+
+            precision = precision_score(y_true, y_pred, average='macro')
+            accuraccy = accuracy_score(y_true, y_pred)
+            recall = recall_score(y_true, y_pred, average='macro')
+            f1 = f1_score(y_true, y_pred, average='macro')
+
+            print('Precision: {}'.format(precision))
+            print('Accuraccy: {}'.format(accuraccy))
+            print('Recall: {}'.format(recall))
+            print('F1 Score: {}'.format(f1))
+
+        
         pack = zip(X_list,y_list)
         label_list = []
         predict_list = []
@@ -331,40 +381,22 @@ if __name__ == "__main__":
         dynamic_features = np.array(kinetic_feature(X_list,n_jobs=16))
         #catch22_features = np.array(tnf.fit_transform(X_list))
         
-        #clf_all = WeightedEnsembleClassifier([clf_1,clf_2])
+        #clf_all = WeightedEnsembleClassifier([clf_0,clf_2])
         
         #catch22_features = pca.fit_transform(catch22_features)
         # all_features = np.concatenate([dynamic_features,catch22_features],axis=-1)
         # predict_list = clf.predict(all_features)
-        clf_1,clf_2 = clf
-        prob1 = clf_1.predict_proba(dynamic_features)
+        clf_0,clf_2 = clf
+        prob1 = clf_0.predict_proba(dynamic_features)
         #prob2 = clf_2.predict_proba(catch22_features)
         prob = prob1
         
         predict_list = np.argmax(prob,axis=1)
         label_list = y_list
-            
-    
-    
-        from sklearn.metrics import confusion_matrix
-        conf_mat = confusion_matrix(np.array(label_list), np.array(predict_list))
-
-        print(conf_mat)
+        label_list01 = get_01_label(label_list)
+        predict_list01 = get_01_label(predict_list)
         
-        from sklearn.metrics import precision_score, recall_score, f1_score,accuracy_score
-
-        # 假设 y_true 是真实的标签，y_pred 是预测的标签
-        y_true = np.array(label_list)
-        y_pred = np.array(predict_list)
-
-        precision = precision_score(y_true, y_pred, average='macro')
-        accuraccy = accuracy_score(y_true, y_pred)
-        recall = recall_score(y_true, y_pred, average='macro')
-        f1 = f1_score(y_true, y_pred, average='macro')
-
-        print('Precision: {}'.format(precision))
-        print('Accuraccy: {}'.format(accuraccy))
-        print('Recall: {}'.format(recall))
-        print('F1 Score: {}'.format(f1))
-
-    valid_func(clf=[clf_1,clf_2],X_list=sample_list,y_list=category_index_list)
+        print_matrix(label_list,predict_list)
+        print_matrix(label_list01,predict_list01)
+        
+    valid_func(clf=[clf_0,clf_2],X_list=sample_list,y_list=category_index_list)
