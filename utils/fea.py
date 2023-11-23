@@ -16,9 +16,10 @@ def _kinetic_feature(single_sample):
     # 最大距离
     distances = np.abs(points[1:] - points[0])
     max_distance = np.max(distances)
-    pt_distance = np.percentile(distances,pt_num)
+    pt_distances = np.percentile(distances,pt_num)
     #主菜比
-    zhucai_fea = dis / pt_distance
+    pt_zhucai_fea = dis / pt_distances
+    zhucai_fea = dis / np.max(distances)
     #坐标点
     start_1 = lat[0]
     start_2 = lon[0]
@@ -46,17 +47,17 @@ def _kinetic_feature(single_sample):
     mid_111 = lat[int(end/4)*3]
     mid_222 = lon[int(end/4)*3]
     
-    #复数速度
-    mean_v = np.mean(v_vec)
-    max_v = np.max(v_vec)
-    pt_v = np.percentile(v_vec,pt_num)
-    # 速度变化率(这个不一的好,可以先不用)
-    rate_v = np.diff(v_vec) / np.diff(np.arange(1, len(v_vec)+1))
-    mean_rate_v = np.mean(rate_v)
-    max_rate_v = np.max(rate_v)
-    pt_rate_v = np.percentile(rate_v,pt_num)
-    var_rate_v = np.var(rate_v)
-    min_rate_v = np.min(rate_v)
+    # #复数速度
+    # mean_v = np.mean(v_vec)
+    # max_v = np.max(v_vec)
+    # pt_v = np.percentile(v_vec,pt_num)
+    # # 速度变化率(这个不一的好,可以先不用)
+    # rate_v = np.diff(v_vec) / np.diff(np.arange(1, len(v_vec)+1))
+    # mean_rate_v = np.mean(rate_v)
+    # max_rate_v = np.max(rate_v)
+    # pt_rate_v = np.percentile(rate_v,pt_num)
+    # var_rate_v = np.var(rate_v)
+    # min_rate_v = np.min(rate_v)
 
     
     #角度与位移角度偏差
@@ -72,12 +73,22 @@ def _kinetic_feature(single_sample):
     pt_index = (np.abs(spectrum - pt_spectrum)).argmin()
     pt_freq = (pt_index-len(timestep)/2)/(len(timestep)/2)*median_sample_rate/2
     
+    #频谱
+    spectrum = np.fft.fftshift(np.fft.fft(v_vec))
+    pt_spectrum = np.percentile(spectrum,pt_num)
+    pt_index = (np.abs(spectrum - pt_spectrum)).argmin()
+    pt_freq_v = (pt_index-len(timestep)/2)/(len(timestep)/2)*median_sample_rate/2
+    
     feature_list = [dis,zhucai_fea,start_1,start_2,mid_1,mid_2,
                     end_1,end_2,
-                    mean_v.real,max_v.real,pt_v.real,mean_rate_v.real,max_rate_v.real,pt_rate_v.real,var_rate_v.real,min_rate_v.real,
-                    mean_v.imag,max_v.imag,pt_v.imag,mean_rate_v.imag,max_rate_v.imag,pt_rate_v.imag,var_rate_v.imag,min_rate_v.imag,
-                    mid_11,mid_22,mid_111,mid_222,
-                    angle_diff_max,angle_diff_mean,pt_freq]
+                    #max_v,max_rate_v,
+                    mean_v,mean_rate_v,var_rate_v,min_rate_v,
+                    pt_v,pt_rate_v,pt_zhucai_fea,
+                    # *np.abs([mean_v,max_v,pt_v,mean_rate_v,max_rate_v,pt_rate_v,var_rate_v,min_rate_v]),
+                    # *np.angle([mean_v,max_v,pt_v,mean_rate_v,max_rate_v,pt_rate_v,var_rate_v,min_rate_v]),
+                    #mid_11,mid_22,mid_111,mid_222,
+                    angle_diff_max,angle_diff_mean,pt_freq,pt_freq_v
+                    ]
     
     feature = np.array(feature_list)
     
