@@ -227,26 +227,32 @@ if __name__ == "__main__":
     # valid_size = len(dataset1) - train_size
     # train_dataset, valid_dataset = torch.utils.data.random_split(dataset1, [train_size, valid_size])
 
-    mydata=DataLoader(train_dataset,batch_size=1,shuffle=True)
-    sample_list = []
-    category_index_list = []
-    category_index_01_list = []
-    for data in mydata:
-        
-        category_index = int(data[1].numpy())
-        #category_index_vector = np.tile(category_index, sample.shape[0])
-        category_index_list.append(category_index)
-        
-        category_index_01 = int(data[2].numpy())
-        #category_index_vector = np.tile(category_index, sample.shape[0])
-        category_index_01_list.append(category_index)
-        #category_index_list.append(category_index_vector)
-        
-        sample=data[0].squeeze(dim=0).numpy()
-        # t= np.isnan(sample)
-        # assert not np.any(t) , "Has Nan!"
-        sample_list.append(sample)
-
+    def get_tracksets(dataset):
+        mydata=DataLoader(dataset,batch_size=1,shuffle=True)
+        sample_list = []
+        category_index_list = []
+        category_index_01_list = []
+        for data in mydata:
+            
+            category_index = int(data[1].numpy())
+            #category_index_vector = np.tile(category_index, sample.shape[0])
+            category_index_list.append(category_index)
+            
+            category_index_01 = int(data[2].numpy())
+            #category_index_vector = np.tile(category_index, sample.shape[0])
+            category_index_01_list.append(category_index_01)
+            #category_index_list.append(category_index_vector)
+            
+            sample=data[0].squeeze(dim=0).numpy()
+            # t= np.isnan(sample)
+            # assert not np.any(t) , "Has Nan!"
+            sample_list.append(sample)
+            
+        _0_index = np.where(np.array(category_index_01_list) == 0)
+        _1_index =  np.where(np.array(category_index_01_list) == 1)  
+        return sample_list,category_index_list,category_index_01_list,_0_index,_1_index
+    
+    sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets(train_dataset)
     print(len(sample_list))
     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TRAIN")
     #convert_collection(t,"df-list")
@@ -262,6 +268,7 @@ if __name__ == "__main__":
 # %%
     tnf = Catch22(outlier_norm=True,catch24=True,replace_nans=True,n_jobs=-1,parallel_backend="loky")
     clf_01 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
+    clf0_14 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
     clf_0 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
     clf_1 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
     clf_2 = RandomForestClassifier(n_estimators=50,n_jobs=-1)
@@ -284,31 +291,39 @@ if __name__ == "__main__":
     #catch22_features = pca.fit_transform(catch22_features)
     #all_features = np.concatenate([dynamic_features,catch22_features],axis=-1)
     
-    clf_0.fit(dynamic_features, y)
-    clf_01.fit(dynamic_features,y)
+    clf_01.fit(dynamic_features,np.array(category_index_01_list))
+    clf_0.fit(dynamic_features[_0_index], y[_0_index])
+    clf_1.fit(dynamic_features[_1_index], y[_1_index])
+    clf0_14.fit(dynamic_features,y)
     #clf_2.fit(catch22_features,y)   
     
-    mydata=DataLoader(valid_dataset,batch_size=1,shuffle=False)
-    sample_list = []
-    category_index_list = []
-    for data in mydata:
-        sample=data[0].squeeze(dim=0).numpy()
-        # t= np.isnan(sample)
-        # assert not np.any(t) , "Has Nan!"
-        sample_list.append(sample)
-        category_index = int(data[1].numpy())
-        category_index_vector = np.tile(category_index, sample.shape[0])
-        category_index_list.append(category_index)
-        #category_index_list.append(category_index_vector)
-
-# # %%
-#     sample_list = sample_list[0:2]
-#     category_index_list = category_index_list[0:2]
-# # %%
-
+    sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets(valid_dataset)
     print(len(sample_list))
 #     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TEST")
 
+    #%%
+    def print_matrix(label_list,predict_list):
+        from sklearn.metrics import confusion_matrix
+        conf_mat = confusion_matrix(np.array(label_list), np.array(predict_list))
+
+        print(conf_mat)
+        
+        from sklearn.metrics import precision_score, recall_score, f1_score,accuracy_score
+
+        # 假设 y_true 是真实的标签，y_pred 是预测的标签
+        y_true = np.array(label_list)
+        y_pred = np.array(predict_list)
+
+        precision = precision_score(y_true, y_pred, average='macro')
+        accuraccy = accuracy_score(y_true, y_pred)
+        recall = recall_score(y_true, y_pred, average='macro')
+        f1 = f1_score(y_true, y_pred, average='macro')
+
+        print('Precision: {}'.format(precision))
+        print('Accuraccy: {}'.format(accuraccy))
+        print('Recall: {}'.format(recall))
+        print('F1 Score: {}'.format(f1))
+    
     def predict_vote_func(predictions:List[np.array])->np.array:
         # 使用 numpy 的 unique 函数来获取所有唯一的预测值及它们的数量
         unique, counts = np.unique(predictions, return_counts=True)
@@ -345,28 +360,6 @@ if __name__ == "__main__":
             rtn = label_01.tolist()
             return rtn
         
-        #%%
-        def print_matrix(label_list,predict_list):
-            from sklearn.metrics import confusion_matrix
-            conf_mat = confusion_matrix(np.array(label_list), np.array(predict_list))
-
-            print(conf_mat)
-            
-            from sklearn.metrics import precision_score, recall_score, f1_score,accuracy_score
-
-            # 假设 y_true 是真实的标签，y_pred 是预测的标签
-            y_true = np.array(label_list)
-            y_pred = np.array(predict_list)
-
-            precision = precision_score(y_true, y_pred, average='macro')
-            accuraccy = accuracy_score(y_true, y_pred)
-            recall = recall_score(y_true, y_pred, average='macro')
-            f1 = f1_score(y_true, y_pred, average='macro')
-
-            print('Precision: {}'.format(precision))
-            print('Accuraccy: {}'.format(accuraccy))
-            print('Recall: {}'.format(recall))
-            print('F1 Score: {}'.format(f1))
 
         
         pack = zip(X_list,y_list)
@@ -399,4 +392,26 @@ if __name__ == "__main__":
         print_matrix(label_list,predict_list)
         print_matrix(label_list01,predict_list01)
         
-    valid_func(clf=[clf_0,clf_2],X_list=sample_list,y_list=category_index_list)
+    valid_func(clf=[clf0_14,clf0_14],X_list=sample_list,y_list=category_index_list)
+    # valid_func(clf=[clf_01,clf_01],X_list=sample_list,y_list=category_index_01_list)
+    
+    #%% 01分类
+    dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=16))
+    prob = clf_01.predict_proba(dynamic_features)
+    predict_list = np.argmax(prob,axis=1)
+    print_matrix(predict_list,category_index_01_list)
+    prdict_0_index = np.where(predict_list == 0)
+    prdict_1_index = np.where(predict_list == 1)
+    #%% 
+    # 0细分类
+    predict_0_list = clf_0.predict(dynamic_features[prdict_0_index])
+    
+    # 1细分类
+    predict_1_list = clf_1.predict(dynamic_features[prdict_1_index])
+    
+    predict_combine = np.zeros(len(sample_list))
+    predict_combine[prdict_0_index] = predict_0_list
+    predict_combine[prdict_1_index] = predict_1_list
+    predict_combine = predict_combine.tolist()
+    print_matrix(predict_combine,category_index_list)
+    pass
