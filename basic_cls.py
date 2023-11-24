@@ -12,7 +12,7 @@ class DatasetReader:
     def __init__(self,matfile_name:str) -> None:
         # Open the MATLAB v7.3 file using h5py
         self.dataset = h5py.File(os.path.join(dir_path,matfile_name), 'r')
-        self.dim_num=6
+        self.dim_num=8
         self.window_len = 128
         self.window_strip = 128
         self.category_sahpe=self.dataset['sample_list'].shape
@@ -85,7 +85,11 @@ class DatasetReader:
             rtn = np.transpose(rtn)
             rtn = np.transpose(rtn,[1,0])
             res.append(rtn)
-        return res              
+        #     lat_mean = self.dataset[data_list[5]]
+        #     lon_mean = data_list[6]
+        #     file_name = data_list[7]     
+        # return res,lat_mean,lon_mean,file_name     
+        return res         
         
     def get_category(self,category_index:int)->Tuple[(np.array,np.array)]:
         #"返回长度为轨迹数量的元组，每个元素是也是元组，第一个元素为轨迹array，第二个为区域编码"
@@ -286,7 +290,7 @@ if __name__ == "__main__":
     #y = np.concatenate(category_index_list,axis=0)
     y = np.array(category_index_list)
     
-    dynamic_features = np.array(kinetic_feature(X,n_jobs=16))
+    dynamic_features = np.array(kinetic_feature(X,n_jobs=1))
     #catch22_features = np.array(tnf.fit_transform(X))
     #catch22_features = pca.fit_transform(catch22_features)
     #all_features = np.concatenate([dynamic_features,catch22_features],axis=-1)
@@ -372,7 +376,7 @@ if __name__ == "__main__":
         #     result_prob = clf.predict_proba(X)
         #     label_list.append(y[0])
         #     predict_list.append(predict_prob_func(result_prob))
-        dynamic_features = np.array(kinetic_feature(X_list,n_jobs=16))
+        dynamic_features = np.array(kinetic_feature(X_list,n_jobs=1))
         #catch22_features = np.array(tnf.fit_transform(X_list))
         
         #clf_all = WeightedEnsembleClassifier([clf_0,clf_2])
@@ -427,7 +431,7 @@ if __name__ == "__main__":
     # valid_func(clf=[clf_01,clf_01],X_list=sample_list,y_list=category_index_01_list)
     
     #%% 01分类
-    dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=16))
+    dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=1))
     prob = clf_01.predict_proba(dynamic_features)
     predict_list_01 = np.argmax(prob,axis=1)
     f1_bio,acc_bio = print_matrix(predict_list_01,category_index_01_list)
