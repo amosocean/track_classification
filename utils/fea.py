@@ -32,7 +32,13 @@ def _kinetic_feature(single_sample):
     end_2 = lon[-1]
     # 速度
     mean_v = np.mean(v)
-    max_v = np.max(v)
+    max_v = np.percentile(v, 95)
+    var_v = np.var(v)
+    min_v = np.min(v)
+    v_20 = np.percentile(v, 20)
+    v_50 = np.percentile(v, 50)
+    v_75 = np.percentile(v, 75)
+    v_rate = np.mean(np.diff(v))
     pt_v = np.percentile(v,pt_num)
     # 速度变化率(这个不一的好,可以先不用)
     rate_v = np.diff(v) / np.diff(np.arange(1, len(v)+1))
@@ -79,16 +85,26 @@ def _kinetic_feature(single_sample):
     pt_index = (np.abs(spectrum - pt_spectrum)).argmin()
     pt_freq_v = (pt_index-len(timestep)/2)/(len(timestep)/2)*median_sample_rate/2
     
-    feature_list = [dis,zhucai_fea,start_1,start_2,mid_1,mid_2,
+    feature_list = [dis,pt_distances,zhucai_fea,start_1,start_2,mid_1,mid_2,
                     end_1,end_2,
                     #max_v,max_rate_v,
-                    mean_v,mean_rate_v,var_rate_v,min_rate_v,
+                    mean_v,max_v,min_v,v_50,
+                    mean_rate_v,var_rate_v,min_rate_v,
                     pt_v,pt_rate_v,pt_zhucai_fea,
                     # *np.abs([mean_v,max_v,pt_v,mean_rate_v,max_rate_v,pt_rate_v,var_rate_v,min_rate_v]),
                     # *np.angle([mean_v,max_v,pt_v,mean_rate_v,max_rate_v,pt_rate_v,var_rate_v,min_rate_v]),
-                    #mid_11,mid_22,mid_111,mid_222,
+                    mid_11,
+                    #mid_22,mid_111,
+                    mid_222,
                     angle_diff_max,angle_diff_mean,pt_freq,pt_freq_v
                     ]
+    #航向变化率
+    rate_angle = np.diff(angle) / np.diff(np.arange(len(angle)))
+    mean_rate_angle = np.mean(rate_angle)
+    max_rate_angle = np.max(rate_angle)
+    var_rate_angle = np.var(rate_angle)
+    min_rate_angle = np.min(rate_angle)
+    feature_list.extend([mean_rate_angle, max_rate_angle, var_rate_angle, min_rate_angle])
     
     feature = np.array(feature_list)
     

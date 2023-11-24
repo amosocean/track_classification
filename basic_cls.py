@@ -306,7 +306,7 @@ if __name__ == "__main__":
         from sklearn.metrics import confusion_matrix
         conf_mat = confusion_matrix(np.array(label_list), np.array(predict_list))
 
-        print(conf_mat)
+        #print(conf_mat)
         
         from sklearn.metrics import precision_score, recall_score, f1_score,accuracy_score
 
@@ -319,10 +319,11 @@ if __name__ == "__main__":
         recall = recall_score(y_true, y_pred, average='macro')
         f1 = f1_score(y_true, y_pred, average='macro')
 
-        print('Precision: {}'.format(precision))
-        print('Accuraccy: {}'.format(accuraccy))
-        print('Recall: {}'.format(recall))
-        print('F1 Score: {}'.format(f1))
+        # print('Precision: {}'.format(precision))
+        # print('Accuraccy: {}'.format(accuraccy))
+        # print('Recall: {}'.format(recall))
+        #print('F1 Score: {}'.format(f1))
+        return accuraccy,f1
     
     def predict_vote_func(predictions:List[np.array])->np.array:
         # 使用 numpy 的 unique 函数来获取所有唯一的预测值及它们的数量
@@ -389,19 +390,49 @@ if __name__ == "__main__":
         label_list01 = get_01_label(label_list)
         predict_list01 = get_01_label(predict_list)
         
-        print_matrix(label_list,predict_list)
-        print_matrix(label_list01,predict_list01)
+        acc_multi,f1_multi = print_matrix(label_list,predict_list)
+        acc_bio,f1_bio = print_matrix(label_list01,predict_list01)
+        print('One stage Score: {}'.format(((f1_bio+f1_multi)/2+(acc_bio+acc_multi)/2)/2))
         
-    valid_func(clf=[clf0_14,clf0_14],X_list=sample_list,y_list=category_index_list)
+        return predict_list, acc_multi,f1_multi
+    
+    def pen_calculate(predict01, predict14, label01):
+        N = len(label01)
+        err1 = 0
+        err2 = 0
+        label11= [5,9,10,12]
+        label00= [0,1,2,3,4,6,7,8,11,13]
+        for i in range(N):
+            if (predict01[i] != label01[i]):
+                if predict01[i] == 0:
+                    if int(predict14[i]) in label11:
+                        err1 += 1
+                else:
+                    if int(predict14[i]) in label00:
+                        err1 += 1
+            else:
+                if predict01[i] == 0:
+                    if int(predict14[i]) in label11:
+                        err2 += 1
+                else:
+                    if int(predict14[i]) in label00:
+                        err2 += 1
+        
+        err1 = err1 / N
+        err2 = err2 / N
+        Pen = 0.5 * err1 + 0.2 * err2
+        return Pen
+        
+    direct_predict_list,direct_acc,direct_f1=valid_func(clf=[clf0_14,clf0_14],X_list=sample_list,y_list=category_index_list)
     # valid_func(clf=[clf_01,clf_01],X_list=sample_list,y_list=category_index_01_list)
     
     #%% 01分类
     dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=16))
     prob = clf_01.predict_proba(dynamic_features)
-    predict_list = np.argmax(prob,axis=1)
-    print_matrix(predict_list,category_index_01_list)
-    prdict_0_index = np.where(predict_list == 0)
-    prdict_1_index = np.where(predict_list == 1)
+    predict_list_01 = np.argmax(prob,axis=1)
+    f1_bio,acc_bio = print_matrix(predict_list_01,category_index_01_list)
+    prdict_0_index = np.where(predict_list_01 == 0)
+    prdict_1_index = np.where(predict_list_01 == 1)
     #%% 
     # 0细分类
     predict_0_list = clf_0.predict(dynamic_features[prdict_0_index])
@@ -413,5 +444,13 @@ if __name__ == "__main__":
     predict_combine[prdict_0_index] = predict_0_list
     predict_combine[prdict_1_index] = predict_1_list
     predict_combine = predict_combine.tolist()
-    print_matrix(predict_combine,category_index_list)
-    pass
+    f1_multi,acc_multi = print_matrix(predict_combine,category_index_list)
+    pen = pen_calculate(predict_list_01,predict_combine,category_index_01_list)
+    print('Two stage F1 Score: {}'.format(((f1_bio+f1_multi)/2+(acc_bio+acc_multi)/2)/2-pen))
+    print(pen)
+    
+    
+    pen = pen_calculate(predict_list_01,direct_predict_list,category_index_01_list)
+    print('Direct Combine F1 Score with penalty: {}'.format(((f1_bio+direct_f1)/2+(acc_bio+direct_acc)/2)/2-pen))
+    print(pen)
+    
