@@ -1,5 +1,19 @@
 import numpy as np
 from multiprocessing.dummy import Pool as TreadPool
+import heapq
+
+def top5freqs(input_array):
+    fftResult = np.fft.fft(input_array)
+
+    # Get absolute value
+    powerSpectrum = np.abs(fftResult)
+
+    # Find the indices of the 5 highest power frequencies
+    idx = heapq.nlargest(2, range(len(powerSpectrum)), powerSpectrum.take)
+
+    top_freqs = [input_array[i] for i in idx]
+    return top_freqs
+
 def _kinetic_feature(single_sample):
     pt_num = 95
     lat,lon,v,angle,timestep = single_sample[0:5]
@@ -85,6 +99,28 @@ def _kinetic_feature(single_sample):
     pt_index = (np.abs(spectrum - pt_spectrum)).argmin()
     pt_freq_v = (pt_index-len(timestep)/2)/(len(timestep)/2)*median_sample_rate/2
     
+    #航向
+    mean_angle = np.mean(angle)
+    max_angle = np.percentile(angle, 95)
+    var_angle = np.var(angle)
+    min_angle = np.min(angle)
+    angle_20 = np.percentile(angle, 20)
+    angle_50 = np.percentile(angle, 50)
+    angle_75 = np.percentile(angle, 75)
+
+    #航向变化率
+    rate_angle = np.diff(angle) / np.diff(np.arange(len(angle)))
+    mean_rate_angle = np.mean(rate_angle)
+    max_rate_angle = np.max(rate_angle)
+    var_rate_angle = np.var(rate_angle)
+    min_rate_angle = np.min(rate_angle)
+
+    #fft
+    fft_lat = top5freqs(lat)
+    fft_lon = top5freqs(lon)
+    fft_v = top5freqs(v)
+    fft_angle = top5freqs(angle)
+
     feature_list = [dis,pt_distances,zhucai_fea,start_1,start_2,mid_1,mid_2,
                     end_1,end_2,
                     #max_v,max_rate_v,
@@ -94,17 +130,20 @@ def _kinetic_feature(single_sample):
                     # *np.abs([mean_v,max_v,pt_v,mean_rate_v,max_rate_v,pt_rate_v,var_rate_v,min_rate_v]),
                     # *np.angle([mean_v,max_v,pt_v,mean_rate_v,max_rate_v,pt_rate_v,var_rate_v,min_rate_v]),
                     mid_11,
-                    #mid_22,mid_111,
+                    mid_22,mid_111,
                     mid_222,
-                    angle_diff_max,angle_diff_mean,pt_freq,pt_freq_v
+                    angle_diff_max,angle_diff_mean,pt_freq,pt_freq_v,
+                    mean_angle,max_angle,var_angle,min_angle,angle_20,angle_50,angle_75,
+                    mean_rate_angle, max_rate_angle, var_rate_angle, min_rate_angle,
+                    fft_lat[0],fft_lat[1],fft_lon[0],fft_lon[1],fft_v[0],fft_v[1],fft_angle[0],fft_angle[1]
                     ]
     #航向变化率
-    rate_angle = np.diff(angle) / np.diff(np.arange(len(angle)))
-    mean_rate_angle = np.mean(rate_angle)
-    max_rate_angle = np.max(rate_angle)
-    var_rate_angle = np.var(rate_angle)
-    min_rate_angle = np.min(rate_angle)
-    feature_list.extend([mean_rate_angle, max_rate_angle, var_rate_angle, min_rate_angle])
+    # rate_angle = np.diff(angle) / np.diff(np.arange(len(angle)))
+    # mean_rate_angle = np.mean(rate_angle)
+    # max_rate_angle = np.max(rate_angle)
+    # var_rate_angle = np.var(rate_angle)
+    # min_rate_angle = np.min(rate_angle)
+    # feature_list.extend([mean_rate_angle, max_rate_angle, var_rate_angle, min_rate_angle])
     
     feature = np.array(feature_list)
     
@@ -122,4 +161,5 @@ def kinetic_feature(sample_list,n_jobs:int = 1):
 if __name__ == "__main__":
     sample = np.random.rand(10,6,120)
     
-    print(kinetic_feature(sample,n_jobs=1))
+    a=kinetic_feature(sample,n_jobs=1)
+    b=1
