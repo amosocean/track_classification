@@ -179,6 +179,10 @@ class SubTrainDataset(SubDataset):
 class SubTestDataset(SubDataset):
     def __init__(self, category_index) -> None:
         super().__init__(category_index,DatasetReader(matfile_name="test.mat"))
+
+class SubRaceDataset(SubDataset):
+    def __init__(self, category_index) -> None:
+        super().__init__(category_index,DatasetReader(matfile_name="race.mat"))
         
 if __name__ == "__main__":
     import aeon.datasets
@@ -225,18 +229,10 @@ if __name__ == "__main__":
 
 #     # 假设 dataset 是你的原始数据集
 #     dataset1 = random_subset(dataset1, 0.1)
-#%%
-    # t=tuple(mydata)
-    # print(t[0])
-    # print(len(t))
-    
-     # 将数据集分割成训练集和验证集
-    # train_size = int(0.8 * len(dataset1))
-    # valid_size = len(dataset1) - train_size
-    # train_dataset, valid_dataset = torch.utils.data.random_split(dataset1, [train_size, valid_size])
+
 
     def get_tracksets(dataset):
-        mydata=DataLoader(dataset,batch_size=1,shuffle=True)
+        mydata=DataLoader(dataset,batch_size=1,shuffle=False)
         sample_list = []
         category_index_list = []
         category_index_01_list = []
@@ -453,7 +449,7 @@ if __name__ == "__main__":
     predict_combine = np.zeros(len(sample_list))
     predict_combine[prdict_0_index] = predict_0_list
     predict_combine[prdict_1_index] = predict_1_list
-    predict_combine = predict_combine.tolist()
+    predict_combine = np.int64(predict_combine).tolist()
     f1_multi,acc_multi = print_matrix(predict_combine,category_index_list)
     pen = pen_calculate(predict_list_01,predict_combine,category_index_01_list)
     print('Two stage F1 Score: {}'.format(((f1_bio+f1_multi)/2+(acc_bio+acc_multi)/2)/2-pen))
@@ -464,3 +460,39 @@ if __name__ == "__main__":
     print('Direct Combine F1 Score with penalty: {}'.format(((f1_bio+direct_f1)/2+(acc_bio+direct_acc)/2)/2-pen))
     print(pen)
     
+    file_name_array = np.stack(file_name_list).squeeze()
+    data = np.column_stack((file_name_array,direct_predict_list, predict_list_01))
+    
+    np.savetxt('result.txt', data, fmt='%s')
+    
+    #%% 比赛部分
+    racedataset = SubRaceDataset(0)
+    sample_list,dummy_category_index_list,dummy_category_index_01_list,dummy_0_index,dummy_1_index,file_name_list = get_tracksets(racedataset)
+    print(len(sample_list))
+     #%% 01分类
+    dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=1))
+    prob = clf_01.predict_proba(dynamic_features)
+    predict_list_01 = np.argmax(prob,axis=1)
+    #f1_bio,acc_bio = print_matrix(predict_list_01,dummy_category_index_01_list)
+    prdict_0_index = np.where(predict_list_01 == 0)
+    prdict_1_index = np.where(predict_list_01 == 1)
+    #%% 
+    # 0细分类
+    predict_0_list = clf_0.predict(dynamic_features[prdict_0_index])
+    
+    # 1细分类
+    predict_1_list = clf_1.predict(dynamic_features[prdict_1_index])
+    
+    predict_combine = np.zeros(len(sample_list))
+    predict_combine[prdict_0_index] = predict_0_list
+    predict_combine[prdict_1_index] = predict_1_list
+    predict_combine = np.int64(predict_combine)
+
+    # pen = pen_calculate(predict_list_01,predict_combine,category_index_01_list)
+    # print('Two stage F1 Score: {}'.format(((f1_bio+f1_multi)/2+(acc_bio+acc_multi)/2)/2-pen))
+    # print(pen)
+    
+    file_name_array = np.stack(file_name_list).squeeze()
+    data = np.column_stack((file_name_array,predict_combine, predict_list_01))
+    
+    np.savetxt('hq-02-XXX.txt', data, fmt='%s')
