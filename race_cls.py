@@ -206,6 +206,7 @@ if __name__ == "__main__":
     from sklearn.gaussian_process.kernels import RBF
     from sklearn.decomposition import PCA
     from aeon.classification.compose import WeightedEnsembleClassifier
+    from aeon.transformations.collection.tsfresh import *
     from utils.fea import kinetic_feature
     # dataset=Dataset()
     # print(dataset.get_trajectorys(0,0))
@@ -234,7 +235,7 @@ if __name__ == "__main__":
 
 
     def get_tracksets(dataset):
-        mydata=DataLoader(dataset,batch_size=1,shuffle=False)
+        mydata=DataLoader(dataset,batch_size=1,shuffle=True)
         sample_list = []
         category_index_list = []
         category_index_01_list = []
@@ -284,20 +285,43 @@ if __name__ == "__main__":
     clf_2 = RandomForestClassifier(n_estimators=50,n_jobs=-1)
     pca = PCA(n_components=1)
     #clf = Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5))
-#     clf = ElasticEnsemble(
-#     proportion_of_param_options=0.1,
-#     proportion_train_for_test=0.1,
-#     distance_measures = ["dtw","ddtw"],
-#     majority_vote=True,
-# )
+    clf = TSFreshFeatureExtractor(default_fc_parameters="efficient",disable_progressbar=False,chunksize=10)
+
     #X=np.array(sample_list)
     # X = np.concatenate(sample_list,axis=0)
     X=sample_list
     #y = np.concatenate(category_index_list,axis=0)
     y = np.array(category_index_list)
+    from tsfresh import extract_features, select_features
+    from tsfresh.feature_extraction import EfficientFCParameters
+    import tsfresh
     
-    dynamic_features = np.array(kinetic_feature(X,n_jobs=1))
-    dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
+    import pandas as pd
+
+    # 假设你的向量列表是：
+    arrays = X
+
+    dataframes = []
+
+    for i, array in enumerate(arrays):
+        array =  array.T
+        df = pd.DataFrame(array, columns=['latitude', 'longitude', 'velocity', 'angle','time'])
+        df['id'] = i  # 增加 'id' 列以区分不同的向量
+        dataframes.append(df)
+    
+    tsfresh_df = pd.concat(dataframes).reset_index(drop=True)
+    tsfresh_df = tsfresh_df.drop('velocity',axis=1)
+    tsfresh_df = tsfresh_df.drop('angle',axis=1)
+    
+    tsfeatures = extract_features(tsfresh_df, column_id='id', column_sort='time',chunksize=None,default_fc_parameters = EfficientFCParameters())
+    tsfeatures = tsfeatures.dropna(axis=1)
+    # T=select_features(tsfeatures, y[0:6])
+    # T=tsfresh.feature_selection.significance_tests.target_real_feature_real_test(tsfeatures, y[0:6])
+    dynamic_features = tsfeatures.to_numpy()
+    
+    # dynamic_features = np.array(kinetic_feature(X,n_jobs=1))
+    # dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
+    
     #catch22_features = np.array(tnf.fit_transform(X))
     #catch22_features = pca.fit_transform(catch22_features)
     #all_features = np.concatenate([dynamic_features,catch22_features],axis=-1)
