@@ -224,14 +224,15 @@ if __name__ == "__main__":
     #     print(index)
 
 #%% 
-# """调试用，缩小数据集"""
-#     def random_subset(dataset, fraction):
-#         length = len(dataset)
-#         indices = np.random.choice(np.arange(length), size=int(fraction * length), replace=False)
-#         return Subset(dataset, indices)
+    """调试用，缩小数据集"""
+    def random_subset(dataset, fraction):
+        length = len(dataset)
+        indices = np.random.choice(np.arange(length), size=int(fraction * length), replace=False)
+        return Subset(dataset, indices)
 
-#     # 假设 dataset 是你的原始数据集
-#     dataset1 = random_subset(dataset1, 0.1)
+    # 假设 dataset 是你的原始数据集
+    train_dataset = random_subset(train_dataset, 0.05)
+    valid_dataset = random_subset(valid_dataset, 0.02)
 
 
     def get_tracksets(dataset):
@@ -298,24 +299,32 @@ if __name__ == "__main__":
     
     import pandas as pd
 
-    # 假设你的向量列表是：
-    arrays = X
+    def list2df(sample_list:List):
+        
+        # 假设你的向量列表是：
+        arrays = sample_list
 
-    dataframes = []
+        dataframes = []
 
-    for i, array in enumerate(arrays):
-        array =  array.T
-        df = pd.DataFrame(array, columns=['latitude', 'longitude', 'velocity', 'angle','time'])
-        df['id'] = i  # 增加 'id' 列以区分不同的向量
-        dataframes.append(df)
+        for i, array in enumerate(arrays):
+            array =  array.T
+            df = pd.DataFrame(array, columns=['latitude', 'longitude', 'velocity', 'angle','time'])
+            df['id'] = i  # 增加 'id' 列以区分不同的向量
+            dataframes.append(df)
+        
+        tsfresh_df = pd.concat(dataframes).reset_index(drop=True)
+        tsfresh_df = tsfresh_df.drop('velocity',axis=1)
+        tsfresh_df = tsfresh_df.drop('angle',axis=1)
+        return tsfresh_df
     
-    tsfresh_df = pd.concat(dataframes).reset_index(drop=True)
-    tsfresh_df = tsfresh_df.drop('velocity',axis=1)
-    tsfresh_df = tsfresh_df.drop('angle',axis=1)
+    tsfresh_df=list2df(X)
     
     tsfeatures = extract_features(tsfresh_df, column_id='id', column_sort='time',chunksize=None,default_fc_parameters = EfficientFCParameters())
     tsfeatures = tsfeatures.dropna(axis=1)
-    # T=select_features(tsfeatures, y[0:6])
+    #T=tsfresh.feature_selection.relevance.calculate_relevance_table(tsfeatures, y[0:22])
+    tsfeatures=select_features(tsfeatures, y[0:len(X)],ml_task="classification",multiclass=True,n_significant=1)
+    kind_to_fc_parameters=tsfresh.feature_extraction.settings.from_columns(tsfeatures)
+    #tsfeatures = extract_features(tsfresh_df, column_id='id', column_sort='time',chunksize=None,kind_to_fc_parameters=kind_to_fc_parameters)
     # T=tsfresh.feature_selection.significance_tests.target_real_feature_real_test(tsfeatures, y[0:6])
     dynamic_features = tsfeatures.to_numpy()
     
@@ -462,10 +471,16 @@ if __name__ == "__main__":
         
     #direct_predict_list,direct_acc,direct_f1=valid_func(clf=[clf0_14,clf0_14],X_list=sample_list,y_list=category_index_list)
     # valid_func(clf=[clf_01,clf_01],X_list=sample_list,y_list=category_index_01_list)
+    tsfresh_df=list2df(sample_list)
     
+    tsfeatures = extract_features(tsfresh_df, column_id='id', column_sort='time',chunksize=None,kind_to_fc_parameters=kind_to_fc_parameters)
+    tsfeatures = tsfeatures.dropna(axis=1)
+    # T=select_features(tsfeatures, y[0:6])
+    # T=tsfresh.feature_selection.significance_tests.target_real_feature_real_test(tsfeatures, y[0:6])
+    dynamic_features = tsfeatures.to_numpy()
     #%% 01分类
-    dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=1))
-    dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
+    # dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=1))
+    # dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
     prob = clf_01.predict_proba(dynamic_features)
     predict_list_01 = np.argmax(prob,axis=1)
     f1_bio,acc_bio = print_matrix(predict_list_01,category_index_01_list)
