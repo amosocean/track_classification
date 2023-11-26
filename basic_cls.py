@@ -76,6 +76,9 @@ class DatasetReader:
         
         n = self.dim_num
         res = []
+        lat_mean = []
+        lon_mean = []
+        file_name =[]
         for index in range(trajectory_shape[-1]):
 
             trajectory_ref=self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,index]][:,0]
@@ -85,11 +88,11 @@ class DatasetReader:
             rtn = np.transpose(rtn)
             rtn = np.transpose(rtn,[1,0])
             res.append(rtn)
-        #     lat_mean = self.dataset[data_list[5]]
-        #     lon_mean = data_list[6]
-        #     file_name = data_list[7]     
-        # return res,lat_mean,lon_mean,file_name     
-        return res         
+            lat_mean.append(np.array(data_list[5]))
+            lon_mean.append(np.array(data_list[6]))
+            file_name.append(np.array(data_list[7]))
+        return res,lat_mean,lon_mean,file_name     
+        #return res         
         
     def get_category(self,category_index:int)->Tuple[(np.array,np.array)]:
         #"返回长度为轨迹数量的元组，每个元素是也是元组，第一个元素为轨迹array，第二个为区域编码"
@@ -138,7 +141,7 @@ class SubDataset(Dataset):
         self.read_data()
         
     def read_data(self):
-        self.trajectory=self.datareader.get_trajectorys(self.category_index)
+        self.trajectory,_,_,self.file_names=self.datareader.get_trajectorys(self.category_index)
         self.trajectory_num = len(self.trajectory)
         
         
@@ -149,6 +152,7 @@ class SubDataset(Dataset):
         #(trajectory,zone_code)=self.datareader.get_trajectorys(self.category_index,trajectory_index)
         
         trajectory = self.trajectory[index]
+        file_name = self.file_names[index]
         #return (trajectory,zone_code) , self.category_index
         #return trajectory , self.
         #return trajectory , self.category_index
@@ -156,7 +160,7 @@ class SubDataset(Dataset):
             index = 1
         else:
             index = 0
-        return trajectory , self.category_index, index
+        return trajectory , self.category_index, index, file_name
         return trajectory , self.category_index
     def __len__(self):
         #return self.datareader.get_length_trajectory(self.category_index)
@@ -236,7 +240,9 @@ if __name__ == "__main__":
         sample_list = []
         category_index_list = []
         category_index_01_list = []
+        filename_list = []
         for data in mydata:
+            filename_list.append(data[3])
             
             category_index = int(data[1].numpy())
             #category_index_vector = np.tile(category_index, sample.shape[0])
@@ -254,9 +260,9 @@ if __name__ == "__main__":
             
         _0_index = np.where(np.array(category_index_01_list) == 0)
         _1_index =  np.where(np.array(category_index_01_list) == 1)  
-        return sample_list,category_index_list,category_index_01_list,_0_index,_1_index
+        return sample_list,category_index_list,category_index_01_list,_0_index,_1_index,filename_list
     
-    sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets(train_dataset)
+    sample_list,category_index_list,category_index_01_list,_0_index,_1_index,file_name_list = get_tracksets(train_dataset)
     print(len(sample_list))
     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TRAIN")
     #convert_collection(t,"df-list")
@@ -301,7 +307,7 @@ if __name__ == "__main__":
     clf0_14.fit(dynamic_features,y)
     #clf_2.fit(catch22_features,y)   
     
-    sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets(valid_dataset)
+    sample_list,category_index_list,category_index_01_list,_0_index,_1_index,file_name_list = get_tracksets(valid_dataset)
     print(len(sample_list))
 #     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TEST")
 
