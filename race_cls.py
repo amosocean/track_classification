@@ -141,7 +141,8 @@ class SubDataset(Dataset):
         self.read_data()
         
     def read_data(self):
-        self.trajectory,_,_,self.file_names=self.datareader.get_trajectorys(self.category_index)
+        self.trajectory,lat,lon,self.file_names=self.datareader.get_trajectorys(self.category_index)
+        self.extra_fea = np.array([lat,lon]).squeeze().T
         self.trajectory_num = len(self.trajectory)
         
         
@@ -153,6 +154,7 @@ class SubDataset(Dataset):
         
         trajectory = self.trajectory[index]
         file_name = self.file_names[index]
+        zones = self.extra_fea[index,:]
         #return (trajectory,zone_code) , self.category_index
         #return trajectory , self.
         #return trajectory , self.category_index
@@ -160,7 +162,7 @@ class SubDataset(Dataset):
             index = 1
         else:
             index = 0
-        return trajectory , self.category_index, index, file_name
+        return trajectory , self.category_index, index, file_name, zones
         return trajectory , self.category_index
     def __len__(self):
         #return self.datareader.get_length_trajectory(self.category_index)
@@ -237,9 +239,10 @@ if __name__ == "__main__":
         category_index_list = []
         category_index_01_list = []
         filename_list = []
+        extra_feature_list = []
         for data in mydata:
             filename_list.append(data[3])
-            
+            extra_feature_list.append(data[4])
             category_index = int(data[1].numpy())
             #category_index_vector = np.tile(category_index, sample.shape[0])
             category_index_list.append(category_index)
@@ -256,9 +259,10 @@ if __name__ == "__main__":
             
         _0_index = np.where(np.array(category_index_01_list) == 0)
         _1_index =  np.where(np.array(category_index_01_list) == 1)  
-        return sample_list,category_index_list,category_index_01_list,_0_index,_1_index,filename_list
+        return sample_list,category_index_list,category_index_01_list,_0_index,_1_index,filename_list,extra_feature_list
     
-    sample_list,category_index_list,category_index_01_list,_0_index,_1_index,file_name_list = get_tracksets(train_dataset)
+    sample_list,category_index_list,category_index_01_list,_0_index,_1_index,file_name_list,extra_feature_list = get_tracksets(train_dataset)
+    extra_feature = np.stack(extra_feature_list).squeeze()
     print(len(sample_list))
     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TRAIN")
     #convert_collection(t,"df-list")
@@ -293,6 +297,7 @@ if __name__ == "__main__":
     y = np.array(category_index_list)
     
     dynamic_features = np.array(kinetic_feature(X,n_jobs=1))
+    dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
     #catch22_features = np.array(tnf.fit_transform(X))
     #catch22_features = pca.fit_transform(catch22_features)
     #all_features = np.concatenate([dynamic_features,catch22_features],axis=-1)
@@ -303,7 +308,8 @@ if __name__ == "__main__":
     clf0_14.fit(dynamic_features,y)
     #clf_2.fit(catch22_features,y)   
     
-    sample_list,category_index_list,category_index_01_list,_0_index,_1_index,file_name_list = get_tracksets(valid_dataset)
+    sample_list,category_index_list,category_index_01_list,_0_index,_1_index,file_name_list,extra_feature_list = get_tracksets(valid_dataset)
+    extra_feature = np.stack(extra_feature_list).squeeze()
     print(len(sample_list))
 #     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TEST")
 
@@ -379,6 +385,7 @@ if __name__ == "__main__":
         #     label_list.append(y[0])
         #     predict_list.append(predict_prob_func(result_prob))
         dynamic_features = np.array(kinetic_feature(X_list,n_jobs=1))
+        dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
         #catch22_features = np.array(tnf.fit_transform(X_list))
         
         #clf_all = WeightedEnsembleClassifier([clf_0,clf_2])
@@ -429,11 +436,12 @@ if __name__ == "__main__":
         Pen = 0.5 * err1 + 0.2 * err2
         return Pen
         
-    direct_predict_list,direct_acc,direct_f1=valid_func(clf=[clf0_14,clf0_14],X_list=sample_list,y_list=category_index_list)
+    #direct_predict_list,direct_acc,direct_f1=valid_func(clf=[clf0_14,clf0_14],X_list=sample_list,y_list=category_index_list)
     # valid_func(clf=[clf_01,clf_01],X_list=sample_list,y_list=category_index_01_list)
     
     #%% 01分类
     dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=1))
+    dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
     prob = clf_01.predict_proba(dynamic_features)
     predict_list_01 = np.argmax(prob,axis=1)
     f1_bio,acc_bio = print_matrix(predict_list_01,category_index_01_list)
@@ -456,21 +464,22 @@ if __name__ == "__main__":
     print(pen)
     
     
-    pen = pen_calculate(predict_list_01,direct_predict_list,category_index_01_list)
-    print('Direct Combine F1 Score with penalty: {}'.format(((f1_bio+direct_f1)/2+(acc_bio+direct_acc)/2)/2-pen))
-    print(pen)
+    # pen = pen_calculate(predict_list_01,direct_predict_list,category_index_01_list)
+    # print('Direct Combine F1 Score with penalty: {}'.format(((f1_bio+direct_f1)/2+(acc_bio+direct_acc)/2)/2-pen))
+    # print(pen)
     
-    file_name_array = np.stack(file_name_list).squeeze()
-    data = np.column_stack((file_name_array,direct_predict_list, predict_list_01))
+    # file_name_array = np.stack(file_name_list).squeeze()
+    # data = np.column_stack((file_name_array,direct_predict_list, predict_list_01))
     
-    np.savetxt('result.txt', data, fmt='%s')
+    # np.savetxt('result.txt', data, fmt='%s')
     
     #%% 比赛部分
     racedataset = SubRaceDataset(0)
-    sample_list,dummy_category_index_list,dummy_category_index_01_list,dummy_0_index,dummy_1_index,file_name_list = get_tracksets(racedataset)
+    sample_list,dummy_category_index_list,dummy_category_index_01_list,dummy_0_index,dummy_1_index,file_name_list,extra_feature_list = get_tracksets(racedataset)
     print(len(sample_list))
      #%% 01分类
     dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=1))
+    dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
     prob = clf_01.predict_proba(dynamic_features)
     predict_list_01 = np.argmax(prob,axis=1)
     #f1_bio,acc_bio = print_matrix(predict_list_01,dummy_category_index_01_list)
