@@ -223,16 +223,16 @@ if __name__ == "__main__":
     #     y=y
     #     print(index)
 
-#%% 
-    """调试用，缩小数据集"""
-    def random_subset(dataset, fraction):
-        length = len(dataset)
-        indices = np.random.choice(np.arange(length), size=int(fraction * length), replace=False)
-        return Subset(dataset, indices)
+# #%% 
+#     """调试用，缩小数据集"""
+#     def random_subset(dataset, fraction):
+#         length = len(dataset)
+#         indices = np.random.choice(np.arange(length), size=int(fraction * length), replace=False)
+#         return Subset(dataset, indices)
 
-    # 假设 dataset 是你的原始数据集
-    train_dataset = random_subset(train_dataset, 0.05)
-    valid_dataset = random_subset(valid_dataset, 0.02)
+#     # 假设 dataset 是你的原始数据集
+#     train_dataset = random_subset(train_dataset, 0.1)
+#     valid_dataset = random_subset(valid_dataset, 0.2)
 
 
     def get_tracksets(dataset):
@@ -313,8 +313,8 @@ if __name__ == "__main__":
             dataframes.append(df)
         
         tsfresh_df = pd.concat(dataframes).reset_index(drop=True)
-        tsfresh_df = tsfresh_df.drop('velocity',axis=1)
-        tsfresh_df = tsfresh_df.drop('angle',axis=1)
+        # tsfresh_df = tsfresh_df.drop('velocity',axis=1)
+        # tsfresh_df = tsfresh_df.drop('angle',axis=1)
         return tsfresh_df
     
     tsfresh_df=list2df(X)
@@ -469,15 +469,34 @@ if __name__ == "__main__":
         Pen = 0.5 * err1 + 0.2 * err2
         return Pen
         
-    #direct_predict_list,direct_acc,direct_f1=valid_func(clf=[clf0_14,clf0_14],X_list=sample_list,y_list=category_index_list)
-    # valid_func(clf=[clf_01,clf_01],X_list=sample_list,y_list=category_index_01_list)
-    tsfresh_df=list2df(sample_list)
+    tsfresh_df_test=list2df(sample_list)
     
-    tsfeatures = extract_features(tsfresh_df, column_id='id', column_sort='time',chunksize=None,kind_to_fc_parameters=kind_to_fc_parameters)
-    tsfeatures = tsfeatures.dropna(axis=1)
+    tsfeatures_test = extract_features(tsfresh_df_test, column_id='id', column_sort='time',chunksize=None,kind_to_fc_parameters=kind_to_fc_parameters)
+    tsfeatures_test = tsfeatures_test.dropna(axis=1)
+    tsfeatures = tsfeatures[tsfeatures_test.columns]
+    
+    dynamic_features = tsfeatures.to_numpy()
+
+    clf_01 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
+    clf0_14 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
+    clf_0 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
+    clf_1 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
+    
+    sample_list,category_index_list,category_index_01_list,_0_index,_1_index,file_name_list,extra_feature_list = get_tracksets(train_dataset)
+    print(len(sample_list))
+    print("临时切换train")
+    clf_01.fit(dynamic_features,np.array(category_index_01_list))
+    clf_0.fit(dynamic_features[_0_index], y[_0_index])
+    clf_1.fit(dynamic_features[_1_index], y[_1_index])
+    clf0_14.fit(dynamic_features,y)
+    
+    sample_list,category_index_list,category_index_01_list,_0_index,_1_index,file_name_list,extra_feature_list = get_tracksets(valid_dataset)
+    extra_feature = np.stack(extra_feature_list).squeeze()
+    print(len(sample_list))
+    print("换回test")
     # T=select_features(tsfeatures, y[0:6])
     # T=tsfresh.feature_selection.significance_tests.target_real_feature_real_test(tsfeatures, y[0:6])
-    dynamic_features = tsfeatures.to_numpy()
+    dynamic_features = tsfeatures_test.to_numpy()
     #%% 01分类
     # dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=1))
     # dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
@@ -511,6 +530,8 @@ if __name__ == "__main__":
     # data = np.column_stack((file_name_array,direct_predict_list, predict_list_01))
     
     # np.savetxt('result.txt', data, fmt='%s')
+    
+    exit(0)
     
     #%% 比赛部分
     racedataset = SubRaceDataset(0)
