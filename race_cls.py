@@ -278,20 +278,20 @@ if __name__ == "__main__":
 #     category_index_list = category_index_list[0:3]
 # %%
     param_grid = {
-    'n_estimators': [50, 100, 200],
-    'max_features': ['sqrt', 'log2'],
-    'max_depth' : [4,5,6,7,8],
-    'criterion' :['entropy', 'log_loss', 'gini']
+    'n_estimators': [80,100,120,150,200,250],
+    'max_features': [*list(range(2,5,1)),*list(range(10,20,2))],
+    'max_depth' : [*list(range(9,14,1)),None],
+    'criterion' :['gini']
 }
 
     tnf = Catch22(outlier_norm=True,catch24=True,replace_nans=True,n_jobs=-1,parallel_backend="loky")
-    # clf_01 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
-    # clf_0 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
-    # clf_1 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
+    # clf_01 = RandomForestClassifier(n_estimators=500,n_jobs=-1,ccp_alpha=0.0005,oob_score=True)
+    # clf_0 = RandomForestClassifier(n_estimators=500,n_jobs=-1,ccp_alpha=0.0005,oob_score=True)
+    # clf_1 = RandomForestClassifier(n_estimators=500,n_jobs=-1,ccp_alpha=0.0005,oob_score=True)
 
-    clf_01 = RandomizedSearchCV(RandomForestClassifier(n_estimators=500,n_jobs=-1),param_distributions=param_grid) 
-    clf_0 =  RandomizedSearchCV(RandomForestClassifier(n_estimators=500,n_jobs=-1),param_distributions=param_grid) 
-    clf_1 =  RandomizedSearchCV(RandomForestClassifier(n_estimators=500,n_jobs=-1),param_distributions=param_grid) 
+    clf_01 = GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
+    clf_0 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
+    clf_1 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
 
     pca = PCA(n_components=1)
     #clf = Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5))
@@ -308,7 +308,7 @@ if __name__ == "__main__":
     y = np.array(category_index_list)
     
     dynamic_features = np.array(kinetic_feature(X,n_jobs=1))
-    dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
+    #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
     #catch22_features = np.array(tnf.fit_transform(X))
     #catch22_features = pca.fit_transform(catch22_features)
     #all_features = np.concatenate([dynamic_features,catch22_features],axis=-1)
@@ -317,6 +317,17 @@ if __name__ == "__main__":
     clf_0.fit(dynamic_features[_0_index], y[_0_index])
     clf_1.fit(dynamic_features[_1_index], y[_1_index])
 
+    # print(clf_01.oob_score_)
+    # print(clf_0.oob_score_)
+    # print(clf_1.oob_score_)
+    
+    print(clf_01.best_params_)
+    print(clf_0 .best_params_)
+    print(clf_1 .best_params_)
+    
+    clf_01 = clf_01.best_estimator_
+    clf_0 = clf_0.best_estimator_
+    clf_1 = clf_1.best_estimator_
     
     sample_list,category_index_list,category_index_01_list,_0_index,_1_index,file_name_list,extra_feature_list = get_tracksets(valid_dataset)
     extra_feature = np.stack(extra_feature_list).squeeze()
@@ -395,7 +406,7 @@ if __name__ == "__main__":
         #     label_list.append(y[0])
         #     predict_list.append(predict_prob_func(result_prob))
         dynamic_features = np.array(kinetic_feature(X_list,n_jobs=1))
-        dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
+        #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
         #catch22_features = np.array(tnf.fit_transform(X_list))
         
         #clf_all = WeightedEnsembleClassifier([clf_0,clf_2])
@@ -451,7 +462,7 @@ if __name__ == "__main__":
     
     #%% 01分类
     dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=1))
-    dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
+    #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
     prob = clf_01.predict_proba(dynamic_features)
     predict_list_01 = np.argmax(prob,axis=1)
     f1_bio,acc_bio = print_matrix(predict_list_01,category_index_01_list)
@@ -489,7 +500,7 @@ if __name__ == "__main__":
     print(len(sample_list))
      #%% 01分类
     dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=1))
-    dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
+    #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
     prob = clf_01.predict_proba(dynamic_features)
     predict_list_01 = np.argmax(prob,axis=1)
     #f1_bio,acc_bio = print_matrix(predict_list_01,dummy_category_index_01_list)
