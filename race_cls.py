@@ -416,14 +416,7 @@ if __name__ == "__main__":
     # clf_0 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
     # clf_1 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
 
-    pca = PCA(n_components=1)
-    #clf = Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5))
-#     clf = ElasticEnsemble(
-#     proportion_of_param_options=0.1,
-#     proportion_train_for_test=0.1,
-#     distance_measures = ["dtw","ddtw"],
-#     majority_vote=True,
-# )
+
     #X=np.array(sample_list)
     # X = np.concatenate(sample_list,axis=0)
     X=sample_list
@@ -451,50 +444,41 @@ if __name__ == "__main__":
     # clf_01 = clf_01.best_estimator_
     # clf_0 = clf_0.best_estimator_
     # clf_1 = clf_1.best_estimator_
-    
-    sample_list,category_index_list,category_index_01_list,_0_index,_1_index,file_name_list,extra_feature_list = get_tracksets(valid_dataset)
-    extra_feature = np.stack(extra_feature_list).squeeze()
-    print(len(sample_list))
-#     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TEST")
+ #%% validation   
+#     sample_list,category_index_list,category_index_01_list,_0_index,_1_index,file_name_list,extra_feature_list = get_tracksets(valid_dataset)
+#     extra_feature = np.stack(extra_feature_list).squeeze()
+#     print(len(sample_list))
+# #     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TEST")
 
     
         
-    #direct_predict_list,direct_acc,direct_f1=valid_func(clf=[clf0_14,clf0_14],X_list=sample_list,y_list=category_index_list)
-    # valid_func(clf=[clf_01,clf_01],X_list=sample_list,y_list=category_index_01_list)
+#     #direct_predict_list,direct_acc,direct_f1=valid_func(clf=[clf0_14,clf0_14],X_list=sample_list,y_list=category_index_list)
+#     # valid_func(clf=[clf_01,clf_01],X_list=sample_list,y_list=category_index_01_list)
     
-    #%% 01分类
-    dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=1))
-    #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
-    prob = clf_01.predict_proba(dynamic_features)
-    predict_list_01 = np.argmax(prob,axis=1)
-    f1_bio,acc_bio = print_matrix(predict_list_01,category_index_01_list)
-    prdict_0_index = np.where(predict_list_01 == 0)
-    prdict_1_index = np.where(predict_list_01 == 1)
-    #%% 
-    # 0细分类
-    predict_0_list = clf_0.predict(dynamic_features[prdict_0_index])
+#     #%% 01分类
+#     dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=1))
+#     #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
+#     prob = clf_01.predict_proba(dynamic_features)
+#     predict_list_01 = np.argmax(prob,axis=1)
+#     f1_bio,acc_bio = print_matrix(predict_list_01,category_index_01_list)
+#     prdict_0_index = np.where(predict_list_01 == 0)
+#     prdict_1_index = np.where(predict_list_01 == 1)
+#     #%% 
+#     # 0细分类
+#     predict_0_list = clf_0.predict(dynamic_features[prdict_0_index])
     
-    # 1细分类
-    predict_1_list = clf_1.predict(dynamic_features[prdict_1_index])
+#     # 1细分类
+#     predict_1_list = clf_1.predict(dynamic_features[prdict_1_index])
     
-    predict_combine = np.zeros(len(sample_list))
-    predict_combine[prdict_0_index] = predict_0_list
-    predict_combine[prdict_1_index] = predict_1_list
-    predict_combine = np.int64(predict_combine).tolist()
-    f1_multi,acc_multi = print_matrix(predict_combine,category_index_list)
-    pen = pen_calculate(predict_list_01,predict_combine,category_index_01_list)
-    print('Two stage F1 Score: {}'.format(((f1_bio+f1_multi)/2+(acc_bio+acc_multi)/2)/2-pen))
-    print(pen)
+#     predict_combine = np.zeros(len(sample_list))
+#     predict_combine[prdict_0_index] = predict_0_list
+#     predict_combine[prdict_1_index] = predict_1_list
+#     predict_combine = np.int64(predict_combine).tolist()
+#     f1_multi,acc_multi = print_matrix(predict_combine,category_index_list)
+#     pen = pen_calculate(predict_list_01,predict_combine,category_index_01_list)
+#     print('Two stage F1 Score: {}'.format(((f1_bio+f1_multi)/2+(acc_bio+acc_multi)/2)/2-pen))
+#     print(pen)
     
-    
-    # pen = pen_calculate(predict_list_01,direct_predict_list,category_index_01_list)
-    # print('Direct Combine F1 Score with penalty: {}'.format(((f1_bio+direct_f1)/2+(acc_bio+direct_acc)/2)/2-pen))
-    # print(pen)
-    
-    # file_name_array = np.stack(file_name_list).squeeze()
-    # data = np.column_stack((file_name_array,direct_predict_list, predict_list_01))
-    
-    # np.savetxt('result.txt', data, fmt='%s')
     
     #%% 比赛部分
     racedataset = SubRaceDataset(0)
