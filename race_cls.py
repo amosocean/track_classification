@@ -207,6 +207,7 @@ if __name__ == "__main__":
     from sklearn.decomposition import PCA
     from aeon.classification.compose import WeightedEnsembleClassifier
     from utils.fea import kinetic_feature
+    from sklearn.model_selection import GridSearchCV,RandomizedSearchCV
     # dataset=Dataset()
     # print(dataset.get_trajectorys(0,0))
     # x=list(dataset.get_category(0))
@@ -276,12 +277,22 @@ if __name__ == "__main__":
 #     sample_list = sample_list[0:3]
 #     category_index_list = category_index_list[0:3]
 # %%
+    param_grid = {
+    'n_estimators': [50, 100, 200],
+    'max_features': ['sqrt', 'log2'],
+    'max_depth' : [4,5,6,7,8],
+    'criterion' :['entropy', 'log_loss', 'gini']
+}
+
     tnf = Catch22(outlier_norm=True,catch24=True,replace_nans=True,n_jobs=-1,parallel_backend="loky")
-    clf_01 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
-    clf0_14 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
-    clf_0 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
-    clf_1 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
-    clf_2 = RandomForestClassifier(n_estimators=50,n_jobs=-1)
+    # clf_01 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
+    # clf_0 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
+    # clf_1 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
+
+    clf_01 = RandomizedSearchCV(RandomForestClassifier(n_estimators=500,n_jobs=-1),param_distributions=param_grid) 
+    clf_0 =  RandomizedSearchCV(RandomForestClassifier(n_estimators=500,n_jobs=-1),param_distributions=param_grid) 
+    clf_1 =  RandomizedSearchCV(RandomForestClassifier(n_estimators=500,n_jobs=-1),param_distributions=param_grid) 
+
     pca = PCA(n_components=1)
     #clf = Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5))
 #     clf = ElasticEnsemble(
@@ -305,8 +316,7 @@ if __name__ == "__main__":
     clf_01.fit(dynamic_features,np.array(category_index_01_list))
     clf_0.fit(dynamic_features[_0_index], y[_0_index])
     clf_1.fit(dynamic_features[_1_index], y[_1_index])
-    clf0_14.fit(dynamic_features,y)
-    #clf_2.fit(catch22_features,y)   
+
     
     sample_list,category_index_list,category_index_01_list,_0_index,_1_index,file_name_list,extra_feature_list = get_tracksets(valid_dataset)
     extra_feature = np.stack(extra_feature_list).squeeze()
