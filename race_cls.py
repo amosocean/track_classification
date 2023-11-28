@@ -7,6 +7,12 @@ dir_path="/home/amos/haitun/pycode/source/matlab/"
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader,ConcatDataset
 from aeon.transformations.collection.pad import PaddingTransformer
+
+# import os
+# os.environ['OMP_NUM_THREADS'] = "1"
+# os.environ['MKL_NUM_THREADS'] = "1"
+# os.environ['OPENBLAS_NUM_THREADS'] = "1"
+
 class DatasetReader:
 
     def __init__(self,matfile_name:str) -> None:
@@ -294,7 +300,7 @@ if __name__ == "__main__":
     #y = np.concatenate(category_index_list,axis=0)
     y = np.array(category_index_list)
     from tsfresh import extract_features, select_features
-    from tsfresh.feature_extraction import EfficientFCParameters
+    from tsfresh.feature_extraction import EfficientFCParameters,ComprehensiveFCParameters
     import tsfresh
     
     import pandas as pd
@@ -322,7 +328,7 @@ if __name__ == "__main__":
     tsfeatures = extract_features(tsfresh_df, column_id='id', column_sort='time',chunksize=None,default_fc_parameters = EfficientFCParameters())
     tsfeatures = tsfeatures.dropna(axis=1)
     #T=tsfresh.feature_selection.relevance.calculate_relevance_table(tsfeatures, y[0:22])
-    tsfeatures=select_features(tsfeatures, y[0:len(X)],ml_task="classification",multiclass=True,n_significant=1)
+    tsfeatures=select_features(tsfeatures, y[0:len(X)],ml_task="classification",multiclass=True,n_significant=5)
     kind_to_fc_parameters=tsfresh.feature_extraction.settings.from_columns(tsfeatures)
     #tsfeatures = extract_features(tsfresh_df, column_id='id', column_sort='time',chunksize=None,kind_to_fc_parameters=kind_to_fc_parameters)
     # T=tsfresh.feature_selection.significance_tests.target_real_feature_real_test(tsfeatures, y[0:6])
