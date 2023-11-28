@@ -185,6 +185,129 @@ class SubTestDataset(SubDataset):
 class SubRaceDataset(SubDataset):
     def __init__(self, category_index) -> None:
         super().__init__(category_index,DatasetReader(matfile_name="race.mat"))
+
+#%%
+def print_matrix(label_list,predict_list):
+    from sklearn.metrics import confusion_matrix
+    conf_mat = confusion_matrix(np.array(label_list), np.array(predict_list))
+
+    #print(conf_mat)
+    
+    from sklearn.metrics import precision_score, recall_score, f1_score,accuracy_score
+
+    # 假设 y_true 是真实的标签，y_pred 是预测的标签
+    y_true = np.array(label_list)
+    y_pred = np.array(predict_list)
+
+    precision = precision_score(y_true, y_pred, average='macro')
+    accuraccy = accuracy_score(y_true, y_pred)
+    recall = recall_score(y_true, y_pred, average='macro')
+    f1 = f1_score(y_true, y_pred, average='macro')
+
+    # print('Precision: {}'.format(precision))
+    # print('Accuraccy: {}'.format(accuraccy))
+    # print('Recall: {}'.format(recall))
+    #print('F1 Score: {}'.format(f1))
+    return accuraccy,f1
+
+def predict_vote_func(predictions:List[np.array])->np.array:
+    # 使用 numpy 的 unique 函数来获取所有唯一的预测值及它们的数量
+    unique, counts = np.unique(predictions, return_counts=True)
+
+    # 使用 numpy 的 argmax 函数来获取得票最多的预测值的索引
+    max_votes_index = np.argmax(counts)
+
+    # 使用索引返回得票最多的预测值
+    return unique[max_votes_index]
+
+def predict_prob_func(predictions:np.array)->np.array:
+        # 计算每种class的总概率
+    class_probabilities=np.sum(predictions,axis=0)
+    # 找出概率最大的class的标签
+    most_probable_class_label = np.argmax(class_probabilities)
+    return most_probable_class_label
+
+def valid_func(clf,X_list:List,y_list:List)->None:
+    
+    def get_01_label(label_list:List):
+        """从14分类中直接获取2分类"""
+        # 二分类处理
+        label_01 = np.array([*label_list[:]], dtype=np.int32)
+        indices = np.where((label_01 == 5) | (label_01 == 9) | (
+            label_01 == 10) | (label_01 == 12))
+
+        if not indices[0].size == 0:
+            # 将它们置为类别1:
+            label_01[indices] = 1
+
+        # 将剩余的类别都置为0
+        other_indices = np.where((label_01 != 1))
+        label_01[other_indices] = 0
+        rtn = label_01.tolist()
+        return rtn
+    
+
+    
+    pack = zip(X_list,y_list)
+    label_list = []
+    predict_list = []
+    # for X,y in pack:
+
+    #     result = clf.predict(X)
+    #     result_prob = clf.predict_proba(X)
+    #     label_list.append(y[0])
+    #     predict_list.append(predict_prob_func(result_prob))
+    dynamic_features = np.array(kinetic_feature(X_list,n_jobs=1))
+    #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
+    #catch22_features = np.array(tnf.fit_transform(X_list))
+    
+    #clf_all = WeightedEnsembleClassifier([clf_0,clf_2])
+    
+    #catch22_features = pca.fit_transform(catch22_features)
+    # all_features = np.concatenate([dynamic_features,catch22_features],axis=-1)
+    # predict_list = clf.predict(all_features)
+    clf_0,clf_2 = clf
+    prob1 = clf_0.predict_proba(dynamic_features)
+    #prob2 = clf_2.predict_proba(catch22_features)
+    prob = prob1
+    
+    predict_list = np.argmax(prob,axis=1)
+    label_list = y_list
+    label_list01 = get_01_label(label_list)
+    predict_list01 = get_01_label(predict_list)
+    
+    acc_multi,f1_multi = print_matrix(label_list,predict_list)
+    acc_bio,f1_bio = print_matrix(label_list01,predict_list01)
+    print('One stage Score: {}'.format(((f1_bio+f1_multi)/2+(acc_bio+acc_multi)/2)/2))
+    
+    return predict_list, acc_multi,f1_multi
+
+def pen_calculate(predict01, predict14, label01):
+    N = len(label01)
+    err1 = 0
+    err2 = 0
+    label11= [5,9,10,12]
+    label00= [0,1,2,3,4,6,7,8,11,13]
+    for i in range(N):
+        if (predict01[i] != label01[i]):
+            if predict01[i] == 0:
+                if int(predict14[i]) in label11:
+                    err1 += 1
+            else:
+                if int(predict14[i]) in label00:
+                    err1 += 1
+        else:
+            if predict01[i] == 0:
+                if int(predict14[i]) in label11:
+                    err2 += 1
+            else:
+                if int(predict14[i]) in label00:
+                    err2 += 1
+    
+    err1 = err1 / N
+    err2 = err2 / N
+    Pen = 0.5 * err1 + 0.2 * err2
+    return Pen
         
 if __name__ == "__main__":
     import aeon.datasets
@@ -285,13 +408,13 @@ if __name__ == "__main__":
 }
 
     tnf = Catch22(outlier_norm=True,catch24=True,replace_nans=True,n_jobs=-1,parallel_backend="loky")
-    # clf_01 = RandomForestClassifier(n_estimators=500,n_jobs=-1,ccp_alpha=0.0005,oob_score=True)
-    # clf_0 = RandomForestClassifier(n_estimators=500,n_jobs=-1,ccp_alpha=0.0005,oob_score=True)
-    # clf_1 = RandomForestClassifier(n_estimators=500,n_jobs=-1,ccp_alpha=0.0005,oob_score=True)
+    clf_01 = RandomForestClassifier(n_estimators=120,n_jobs=-1,oob_score=True)
+    clf_0 = RandomForestClassifier(n_estimators=150,n_jobs=-1,oob_score=True)
+    clf_1 = RandomForestClassifier(n_estimators=80,n_jobs=-1,oob_score=True)
 
-    clf_01 = GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
-    clf_0 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
-    clf_1 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
+    # clf_01 = GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
+    # clf_0 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
+    # clf_1 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
 
     pca = PCA(n_components=1)
     #clf = Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5))
@@ -321,141 +444,20 @@ if __name__ == "__main__":
     # print(clf_0.oob_score_)
     # print(clf_1.oob_score_)
     
-    print(clf_01.best_params_)
-    print(clf_0 .best_params_)
-    print(clf_1 .best_params_)
+    # print(clf_01.best_params_)
+    # print(clf_0 .best_params_)
+    # print(clf_1 .best_params_)
     
-    clf_01 = clf_01.best_estimator_
-    clf_0 = clf_0.best_estimator_
-    clf_1 = clf_1.best_estimator_
+    # clf_01 = clf_01.best_estimator_
+    # clf_0 = clf_0.best_estimator_
+    # clf_1 = clf_1.best_estimator_
     
     sample_list,category_index_list,category_index_01_list,_0_index,_1_index,file_name_list,extra_feature_list = get_tracksets(valid_dataset)
     extra_feature = np.stack(extra_feature_list).squeeze()
     print(len(sample_list))
 #     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TEST")
 
-    #%%
-    def print_matrix(label_list,predict_list):
-        from sklearn.metrics import confusion_matrix
-        conf_mat = confusion_matrix(np.array(label_list), np.array(predict_list))
-
-        #print(conf_mat)
-        
-        from sklearn.metrics import precision_score, recall_score, f1_score,accuracy_score
-
-        # 假设 y_true 是真实的标签，y_pred 是预测的标签
-        y_true = np.array(label_list)
-        y_pred = np.array(predict_list)
-
-        precision = precision_score(y_true, y_pred, average='macro')
-        accuraccy = accuracy_score(y_true, y_pred)
-        recall = recall_score(y_true, y_pred, average='macro')
-        f1 = f1_score(y_true, y_pred, average='macro')
-
-        # print('Precision: {}'.format(precision))
-        # print('Accuraccy: {}'.format(accuraccy))
-        # print('Recall: {}'.format(recall))
-        #print('F1 Score: {}'.format(f1))
-        return accuraccy,f1
     
-    def predict_vote_func(predictions:List[np.array])->np.array:
-        # 使用 numpy 的 unique 函数来获取所有唯一的预测值及它们的数量
-        unique, counts = np.unique(predictions, return_counts=True)
-
-        # 使用 numpy 的 argmax 函数来获取得票最多的预测值的索引
-        max_votes_index = np.argmax(counts)
-
-        # 使用索引返回得票最多的预测值
-        return unique[max_votes_index]
-
-    def predict_prob_func(predictions:np.array)->np.array:
-         # 计算每种class的总概率
-        class_probabilities=np.sum(predictions,axis=0)
-        # 找出概率最大的class的标签
-        most_probable_class_label = np.argmax(class_probabilities)
-        return most_probable_class_label
-    
-    def valid_func(clf,X_list:List,y_list:List)->None:
-        
-        def get_01_label(label_list:List):
-            """从14分类中直接获取2分类"""
-            # 二分类处理
-            label_01 = np.array([*label_list[:]], dtype=np.int32)
-            indices = np.where((label_01 == 5) | (label_01 == 9) | (
-                label_01 == 10) | (label_01 == 12))
-
-            if not indices[0].size == 0:
-                # 将它们置为类别1:
-                label_01[indices] = 1
-
-            # 将剩余的类别都置为0
-            other_indices = np.where((label_01 != 1))
-            label_01[other_indices] = 0
-            rtn = label_01.tolist()
-            return rtn
-        
-
-        
-        pack = zip(X_list,y_list)
-        label_list = []
-        predict_list = []
-        # for X,y in pack:
-
-        #     result = clf.predict(X)
-        #     result_prob = clf.predict_proba(X)
-        #     label_list.append(y[0])
-        #     predict_list.append(predict_prob_func(result_prob))
-        dynamic_features = np.array(kinetic_feature(X_list,n_jobs=1))
-        #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
-        #catch22_features = np.array(tnf.fit_transform(X_list))
-        
-        #clf_all = WeightedEnsembleClassifier([clf_0,clf_2])
-        
-        #catch22_features = pca.fit_transform(catch22_features)
-        # all_features = np.concatenate([dynamic_features,catch22_features],axis=-1)
-        # predict_list = clf.predict(all_features)
-        clf_0,clf_2 = clf
-        prob1 = clf_0.predict_proba(dynamic_features)
-        #prob2 = clf_2.predict_proba(catch22_features)
-        prob = prob1
-        
-        predict_list = np.argmax(prob,axis=1)
-        label_list = y_list
-        label_list01 = get_01_label(label_list)
-        predict_list01 = get_01_label(predict_list)
-        
-        acc_multi,f1_multi = print_matrix(label_list,predict_list)
-        acc_bio,f1_bio = print_matrix(label_list01,predict_list01)
-        print('One stage Score: {}'.format(((f1_bio+f1_multi)/2+(acc_bio+acc_multi)/2)/2))
-        
-        return predict_list, acc_multi,f1_multi
-    
-    def pen_calculate(predict01, predict14, label01):
-        N = len(label01)
-        err1 = 0
-        err2 = 0
-        label11= [5,9,10,12]
-        label00= [0,1,2,3,4,6,7,8,11,13]
-        for i in range(N):
-            if (predict01[i] != label01[i]):
-                if predict01[i] == 0:
-                    if int(predict14[i]) in label11:
-                        err1 += 1
-                else:
-                    if int(predict14[i]) in label00:
-                        err1 += 1
-            else:
-                if predict01[i] == 0:
-                    if int(predict14[i]) in label11:
-                        err2 += 1
-                else:
-                    if int(predict14[i]) in label00:
-                        err2 += 1
-        
-        err1 = err1 / N
-        err2 = err2 / N
-        Pen = 0.5 * err1 + 0.2 * err2
-        return Pen
         
     #direct_predict_list,direct_acc,direct_f1=valid_func(clf=[clf0_14,clf0_14],X_list=sample_list,y_list=category_index_list)
     # valid_func(clf=[clf_01,clf_01],X_list=sample_list,y_list=category_index_01_list)
