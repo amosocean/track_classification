@@ -113,6 +113,8 @@ if __name__ == "__main__":
     category_index_list = []
     for data in mydata:
         sample=data[0].squeeze(axis=0).numpy()
+        if sample.shape[-1] == 1:
+            sample = np.concatenate((sample, sample), axis=1)
         # t= np.isnan(sample)
         # assert not np.any(t) , "Has Nan!"
         sample_list.append(sample)
@@ -127,6 +129,8 @@ if __name__ == "__main__":
     category_index_list = []
     for data in mydata:
         sample=data[0].squeeze(axis = 0).numpy()
+        if sample.shape[-1] == 1:
+            sample = np.concatenate((sample, sample), axis=1)
         t=np.isnan(sample)
         assert not np.any(t) , "Has Nan!"
         sample_list.append(sample)
