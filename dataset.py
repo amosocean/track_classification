@@ -67,10 +67,22 @@ class SubDataset(Dataset):
         self.category_index = category_index
 
     def __getitem__(self,index)->(np.array,int):
+        
+        k = 128
+        
         trajectory_index=index
         #(trajectory,zone_code)=self.datareader.get_trajectorys(self.category_index,trajectory_index)
         trajectory=self.datareader.get_trajectorys(self.category_index,trajectory_index)
-        
+        n = trajectory.shape[-1]
+
+        # 调整数据至能够被k整除的长度
+        n_adjusted = n // k * k
+        x_adjusted = trajectory[:, :n_adjusted]
+
+        # 切分堆叠数据
+
+        trajectory = x_adjusted.reshape(4*k, n_adjusted//k)
+        trajectory = trajectory
         #return (trajectory,zone_code) , self.category_index
         return trajectory , self.category_index
 
@@ -100,7 +112,7 @@ if __name__ == "__main__":
     sample_list = []
     category_index_list = []
     for data in mydata:
-        sample=data[0].squeeze().numpy()
+        sample=data[0].squeeze(axis=0).numpy()
         # t= np.isnan(sample)
         # assert not np.any(t) , "Has Nan!"
         sample_list.append(sample)
@@ -114,7 +126,7 @@ if __name__ == "__main__":
     sample_list = []
     category_index_list = []
     for data in mydata:
-        sample=data[0].squeeze().numpy()
+        sample=data[0].squeeze(axis = 0).numpy()
         t=np.isnan(sample)
         assert not np.any(t) , "Has Nan!"
         sample_list.append(sample)
