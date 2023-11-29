@@ -407,14 +407,14 @@ if __name__ == "__main__":
     'criterion' :['gini']
 }
 
-    tnf = Catch22(outlier_norm=True,catch24=True,replace_nans=True,n_jobs=-1,parallel_backend="loky")
-    clf_01 = RandomForestClassifier(n_estimators=120,n_jobs=-1,oob_score=True)
-    clf_0 = RandomForestClassifier(n_estimators=150,n_jobs=-1,oob_score=True)
-    clf_1 = RandomForestClassifier(n_estimators=80,n_jobs=-1,oob_score=True)
+    # tnf = Catch22(outlier_norm=True,catch24=True,replace_nans=True,n_jobs=-1,parallel_backend="loky")
+    # clf_01 = RandomForestClassifier(n_estimators=120,n_jobs=-1,oob_score=True)
+    # clf_0 = RandomForestClassifier(n_estimators=150,n_jobs=-1,oob_score=True)
+    # clf_1 = RandomForestClassifier(n_estimators=80,n_jobs=-1,oob_score=True)
 
-    # clf_01 = GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
-    # clf_0 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
-    # clf_1 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
+    clf_01 = GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
+    clf_0 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
+    clf_1 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
 
 
     #X=np.array(sample_list)
@@ -437,13 +437,13 @@ if __name__ == "__main__":
     # print(clf_0.oob_score_)
     # print(clf_1.oob_score_)
     
-    # print(clf_01.best_params_)
-    # print(clf_0 .best_params_)
-    # print(clf_1 .best_params_)
+    print(clf_01.best_params_)
+    print(clf_0 .best_params_)
+    print(clf_1 .best_params_)
     
-    # clf_01 = clf_01.best_estimator_
-    # clf_0 = clf_0.best_estimator_
-    # clf_1 = clf_1.best_estimator_
+    clf_01 = clf_01.best_estimator_
+    clf_0 = clf_0.best_estimator_
+    clf_1 = clf_1.best_estimator_
  #%% validation   
 #     sample_list,category_index_list,category_index_01_list,_0_index,_1_index,file_name_list,extra_feature_list = get_tracksets(valid_dataset)
 #     extra_feature = np.stack(extra_feature_list).squeeze()
