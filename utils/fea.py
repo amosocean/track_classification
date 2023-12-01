@@ -25,6 +25,18 @@ def _kinetic_feature(single_sample):
     # lat,lon,v,angle 为输入的单个轨迹的
     # 长度
     diff = np.diff(points)
+    if np.any(diff.imag>350):
+        index1 = np.where(diff.imag>350)
+        diff.imag[index1]=diff.imag[index1]-360
+    if np.any(diff.imag<-350):
+        index1 = np.where(diff.imag<-350)
+        diff.imag[index1]=diff.imag[index1]+360
+        
+    np.roll(points,1)
+    # index1 = np.where(diff.imag>360)
+    # diff[index1[0]:-1]=diff[index1[0]:-1].imag-360
+    # index1 = np.where(diff.imag>-360)
+    # diff[index1[0]:-1]=diff[index1[0]:-1].imag+180
     distances = np.abs(diff)
     dis = np.sum(distances)
     # 最大距离
@@ -33,7 +45,7 @@ def _kinetic_feature(single_sample):
     pt_distances = np.percentile(distances,pt_num)
     #主菜比
     pt_zhucai_fea = dis / pt_distances
-    zhucai_fea = dis / np.max(distances)
+    zhucai_fea = dis // np.max(distances)
     #坐标点
     start_1 = lat[0]
     start_2 = lon[0]
@@ -121,12 +133,12 @@ def _kinetic_feature(single_sample):
     fft_v = top5freqs(v)
     fft_angle = top5freqs(angle)
 
-    feature_list = [dis,pt_distances,zhucai_fea,start_1,start_2,mid_1,mid_2,
+    feature_list = [dis,pt_distances,start_1,start_2,mid_1,mid_2,
                     end_1,end_2,
                     #max_v,max_rate_v,
                     mean_v,max_v,min_v,v_50,
                     mean_rate_v,var_rate_v,min_rate_v,
-                    pt_v,pt_rate_v,pt_zhucai_fea,
+                    pt_v,pt_rate_v,
                     # *np.abs([mean_v,max_v,pt_v,mean_rate_v,max_rate_v,pt_rate_v,var_rate_v,min_rate_v]),
                     # *np.angle([mean_v,max_v,pt_v,mean_rate_v,max_rate_v,pt_rate_v,var_rate_v,min_rate_v]),
                     mid_11,
