@@ -401,21 +401,22 @@ if __name__ == "__main__":
 #     category_index_list = category_index_list[0:3]
 # %%
     param_grid = {
-    'n_estimators': [80,100,120,150,200,250],
-    'max_features': [*list(range(2,5,1)),*list(range(10,20,2))],
-    'max_depth' : [*list(range(9,14,1)),None],
+    'n_estimators': [50,80,150],
+    'max_features': [*list(range(4,6,1)),*list(range(14,17,2)),None],
+    'max_depth' : [*list(range(12,15,1)),None],
     'criterion' :['gini']
 }
 
     # tnf = Catch22(outlier_norm=True,catch24=True,replace_nans=True,n_jobs=-1,parallel_backend="loky")
-    # clf_01 = RandomForestClassifier(n_estimators=120,n_jobs=-1,oob_score=True)
-    # clf_0 = RandomForestClassifier(n_estimators=150,n_jobs=-1,oob_score=True)
-    # clf_1 = RandomForestClassifier(n_estimators=80,n_jobs=-1,oob_score=True)
+    # clf_01 = RandomForestClassifier(n_estimators=120,n_jobs=-1,oob_score=False)
+    # clf_0 = RandomForestClassifier(n_estimators=150,n_jobs=-1,oob_score=False)
+    # clf_1 = RandomForestClassifier(n_estimators=80,n_jobs=-1,oob_score=False)
+    # clf0_14 = RandomForestClassifier(n_estimators=150,n_jobs=-1,oob_score=False)
 
-    clf_01 = GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
-    clf_0 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
-    clf_1 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=7,n_jobs=-1) 
-
+    clf_01 = GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=10,n_jobs=-1) 
+    clf_0 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=10,n_jobs=-1) 
+    clf_1 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=10,n_jobs=-1) 
+    clf0_14 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=10,n_jobs=-1) 
 
     #X=np.array(sample_list)
     # X = np.concatenate(sample_list,axis=0)
@@ -432,18 +433,21 @@ if __name__ == "__main__":
     clf_01.fit(dynamic_features,np.array(category_index_01_list))
     clf_0.fit(dynamic_features[_0_index], y[_0_index])
     clf_1.fit(dynamic_features[_1_index], y[_1_index])
-
+    clf0_14.fit(dynamic_features, y)
     # print(clf_01.oob_score_)
     # print(clf_0.oob_score_)
     # print(clf_1.oob_score_)
+    # print(clf0_14.oob_score_)
     
     print(clf_01.best_params_)
     print(clf_0 .best_params_)
     print(clf_1 .best_params_)
+    print(clf0_14 .best_params_)
     
     clf_01 = clf_01.best_estimator_
     clf_0 = clf_0.best_estimator_
     clf_1 = clf_1.best_estimator_
+    clf0_14 = clf0_14.best_estimator_
  #%% validation   
 #     sample_list,category_index_list,category_index_01_list,_0_index,_1_index,file_name_list,extra_feature_list = get_tracksets(valid_dataset)
 #     extra_feature = np.stack(extra_feature_list).squeeze()
@@ -452,7 +456,7 @@ if __name__ == "__main__":
 
     
         
-#     #direct_predict_list,direct_acc,direct_f1=valid_func(clf=[clf0_14,clf0_14],X_list=sample_list,y_list=category_index_list)
+    #direct_predict_list,direct_acc,direct_f1=valid_func(clf=[clf0_14,clf0_14],X_list=sample_list,y_list=category_index_list)
 #     # valid_func(clf=[clf_01,clf_01],X_list=sample_list,y_list=category_index_01_list)
     
 #     #%% 01分类
@@ -486,7 +490,14 @@ if __name__ == "__main__":
     print(len(sample_list))
      #%% 01分类
     dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=1))
+    nan_index = np.where(np.isnan(dynamic_features))
+    print(nan_index)
     #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
+    direct_predict_list = clf0_14.predict(dynamic_features)
+    direct_predict_list=np.int64(direct_predict_list)
+    counts = np.bincount(direct_predict_list)
+
+    print(counts)
     prob = clf_01.predict_proba(dynamic_features)
     predict_list_01 = np.argmax(prob,axis=1)
     #f1_bio,acc_bio = print_matrix(predict_list_01,dummy_category_index_01_list)
@@ -511,4 +522,18 @@ if __name__ == "__main__":
     file_name_array = np.stack(file_name_list).squeeze()
     data = np.column_stack((file_name_array,predict_combine, predict_list_01))
     
+    
+    counts = np.bincount(predict_combine)
+
+    print(counts)
+    
     np.savetxt('hq-02-XXX.txt', data, fmt='%s')
+    
+    data = np.column_stack((file_name_array,direct_predict_list, predict_list_01))
+    
+    
+    counts = np.bincount(predict_combine)
+
+    print(counts)
+    
+    np.savetxt('hq-02-XXX-direct.txt', data, fmt='%s')
