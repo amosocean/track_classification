@@ -181,15 +181,8 @@ class SubTestDataset(SubDataset):
         super().__init__(category_index,DatasetReader(matfile_name="test.mat"))
         
 if __name__ == "__main__":
-    import aeon.datasets
+
     from torch.utils.data import Subset
-    from aeon.datasets import write_to_tsfile
-    from aeon.classification.feature_based import Catch22Classifier,TSFreshClassifier,FreshPRINCEClassifier,MatrixProfileClassifier,SignatureClassifier,SummaryClassifier
-    from aeon.classification.interval_based import CanonicalIntervalForestClassifier
-    from aeon.classification.hybrid import HIVECOTEV2
-    from aeon.classification.shapelet_based import ShapeletTransformClassifier
-    from aeon.classification.distance_based import ElasticEnsemble
-    from aeon.transformations.collection import Catch22
     from sklearn.ensemble import RandomForestClassifier,AdaBoostClassifier
     from sklearn.neighbors import KNeighborsClassifier
     from sklearn.svm import SVC
@@ -201,20 +194,14 @@ if __name__ == "__main__":
     from sklearn.decomposition import PCA
     from aeon.classification.compose import WeightedEnsembleClassifier
     from utils.fea import kinetic_feature
-    # dataset=Dataset()
-    # print(dataset.get_trajectorys(0,0))
-    # x=list(dataset.get_category(0))
+    
     dataset_list = [SubTrainDataset(i) for i in range(14)]
-    #dataset_list.extend([SubTrainDataset(i) for i in [5,5,5,9,9,9,12,12,12]])
+
     train_dataset=ConcatDataset(datasets=dataset_list)
     
     dataset_list = [SubTestDataset(i) for i in range(14)]
     valid_dataset=ConcatDataset(datasets=dataset_list)
-    # mydata=DataLoader(dataset1,batch_size=1,shuffle=True)
-    # for index, (x, y) in enumerate(mydata):
-    #     x=x
-    #     y=y
-    #     print(index)
+    
 
 #%% 
 # """调试用，缩小数据集"""

@@ -14,22 +14,30 @@ def process_file(file_path):
     
     return numpy_array
 
-# 设置数据集文件夹路径
-dataset_folder = '/mnt/d/haitundata'
+def Readcsv(dataset_folder):
+    """
+    返回嵌套列表，第一层是类别，第二层是某一类的轨迹样本
+    """
+    # # 设置数据集文件夹路径
+    # dataset_folder = '/mnt/d/haitundata'
 
-# 遍历标签文件夹
-label_folders = [label_folder for label_folder in os.listdir(dataset_folder) if os.path.isdir(os.path.join(dataset_folder, label_folder))]
-label_folders.sort(key=lambda x:int(x.split('.')[0]))
-# 使用多进程处理每个标签文件夹下的文件
-pool = Pool()
+    # 遍历标签文件夹
+    label_folders = [label_folder for label_folder in os.listdir(dataset_folder) if os.path.isdir(os.path.join(dataset_folder, label_folder))]
+    label_folders.sort(key=lambda x:int(x.split('.')[0]))
+    # 使用多进程处理每个标签文件夹下的文件
+    pool = Pool()
 
-result = []
-for label_folder in label_folders:
-    label_folder_path = os.path.join(dataset_folder, label_folder)
-    files = [os.path.join(label_folder_path, file) for file in os.listdir(label_folder_path) if os.path.isfile(os.path.join(label_folder_path, file))]
-    result.append(pool.map(process_file, files))
+    result = []
+    for label_folder in label_folders:
+        label_folder_path = os.path.join(dataset_folder, label_folder)
+        files = [os.path.join(label_folder_path, file) for file in os.listdir(label_folder_path) if os.path.isfile(os.path.join(label_folder_path, file))]
+        result.append(pool.map(process_file, files))
 
-pool.close()
-pool.join()
-t =1 
-# result列表包含了所有文件的numpy数组
+    pool.close()
+    pool.join()
+    # result列表包含了所有文件的numpy数组
+
+    return result
+
+if __name__ == "__main__":
+    print(len(Readcsv("/mnt/d/haitundata")[0]))
