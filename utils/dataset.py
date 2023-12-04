@@ -10,8 +10,8 @@ def process_file(file_path):
     df[0] = df[0].str.replace('T', '')   
     # 解析每行数据并将其转换为numpy数组
     # 将DataFrame转换为numpy数组
-    numpy_array = df.values[:, 1:].astype(np.float64)
-    
+    numpy_array = df.to_numpy(dtype=np.float64,na_value=0)
+    numpy_array = numpy_array[:, np.concatenate([np.arange(1, numpy_array.shape[1]), [0]])]
     return numpy_array
 
 def Readcsv(dataset_folder):
@@ -31,7 +31,7 @@ def Readcsv(dataset_folder):
     for label_folder in label_folders:
         label_folder_path = os.path.join(dataset_folder, label_folder)
         files = [os.path.join(label_folder_path, file) for file in os.listdir(label_folder_path) if os.path.isfile(os.path.join(label_folder_path, file))]
-        result.append(pool.map(process_file, files))
+        result.append(list(map(process_file, files)))
 
     pool.close()
     pool.join()
