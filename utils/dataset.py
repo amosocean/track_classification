@@ -12,7 +12,7 @@ def process_file(file_path):
     # 将DataFrame转换为numpy数组
     numpy_array = df.to_numpy(dtype=np.float64,na_value=0)
     numpy_array = numpy_array[:, np.concatenate([np.arange(1, numpy_array.shape[1]), [0]])]
-    return numpy_array
+    return numpy_array.T
 
 def Readcsv(dataset_folder):
     """
