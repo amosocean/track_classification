@@ -8,130 +8,6 @@ dir_path="/home/amos/haitun/pycode/source/matlab/"
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader,ConcatDataset
 from aeon.transformations.collection.pad import PaddingTransformer
-class DatasetReader:
-
-    def __init__(self,matfile_name:str) -> None:
-        # Open the MATLAB v7.3 file using h5py
-        self.dataset = h5py.File(os.path.join(dir_path,matfile_name), 'r')
-        self.dim_num=8
-        self.window_len = 128
-        self.window_strip = 128
-        self.category_sahpe=self.dataset['sample_list'].shape
-        
-    def get_trajectorys(self,category_index:int)->Tuple[np.array]:
-        #"""返回一个[5,timestep_num]的np数组，5包括time x y v angle , 以及一个区域编码"""
-        """返回一个[5,timestep_num]的np数组，5包括x y v angle"""
-        assert category_index <= self.category_sahpe[-1] and category_index>=0 , "category_index out of range"
-        trajectory_shape=self.dataset[self.dataset['sample_list'][0,category_index]].shape
-        
-        n = self.dim_num
-        res = []
-        for index in range(trajectory_shape[-1]):
-
-            trajectory_ref=self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,index]][:,0]
-            data_list=[self.dataset[trajectory_ref[_]] for _ in range(n)]
-            #code_ref = self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][n,0]
-            padder=PaddingTransformer(self.window_len,fill_value=0)
-            rtn= np.array(data_list,dtype=np.float32).squeeze()
-            rtn = np.transpose(rtn)
-            if len(rtn)<self.window_len:
-                rtn = rtn.T
-                res.extend([rtn,])
-            else:
-                rtn = np.transpose(self.sliding_window(rtn, self.window_len, self.window_strip),[0,2,1])
-                temp =[*rtn]
-                res.extend(temp)
-
-        res = padder.fit_transform(res)
-        return res            
-
-    def get_trajectorys(self,category_index:int)->Tuple:
-        """返回一个元组，包含含有多个单一完整轨迹的SubDataset，对于某个类型"""
-        assert category_index <= self.category_sahpe[-1] and category_index>=0 , "category_index out of range"
-        trajectory_shape=self.dataset[self.dataset['sample_list'][0,category_index]].shape
-        
-        n = self.dim_num
-        res = []
-        for index in range(trajectory_shape[-1]):
-
-            trajectory_ref=self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,index]][:,0]
-            data_list=[self.dataset[trajectory_ref[_]] for _ in range(n)]
-            #code_ref = self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][n,0]
-            padder=PaddingTransformer(self.window_len,fill_value=0)
-            rtn= np.array(data_list,dtype=np.float32).squeeze()
-            rtn = np.transpose(rtn)
-            if len(rtn)<self.window_len:
-                rtn = np.transpose(rtn[np.newaxis,:,:],[0,2,1])
-                rtn = padder.fit_transform(rtn)
-                res.append(rtn)
-            else:
-                rtn = np.transpose(self.sliding_window(rtn, self.window_len, self.window_strip),[0,2,1])
-                temp =rtn
-                res.append(rtn)
-        return res
-    
-    def get_trajectorys(self,category_index:int)->Tuple:
-        """返回无滑窗的变长轨迹list"""
-        assert category_index <= self.category_sahpe[-1] and category_index>=0 , "category_index out of range"
-        trajectory_shape=self.dataset[self.dataset['sample_list'][0,category_index]].shape
-        
-        n = self.dim_num
-        res = []
-        lat_mean = []
-        lon_mean = []
-        file_name =[]
-        for index in range(trajectory_shape[-1]):
-
-            trajectory_ref=self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,index]][:,0]
-            data_list=[self.dataset[trajectory_ref[_]] for _ in range(n)]
-            #code_ref = self.dataset[self.dataset[self.dataset['sample_list'][0,category_index]][0,trajectory_index]][n,0]
-            rtn= np.array(data_list[0:5],dtype=np.float32).squeeze()
-            rtn = np.transpose(rtn)
-            rtn = np.transpose(rtn,[1,0])
-            res.append(rtn)
-            lat_mean.append(np.array(data_list[5]))
-            lon_mean.append(np.array(data_list[6]))
-            file_name.append(np.array(data_list[7]))
-        return res,lat_mean,lon_mean,file_name     
-        #return res         
-        
-    def get_category(self,category_index:int)->Tuple[(np.array,np.array)]:
-        #"返回长度为轨迹数量的元组，每个元素是也是元组，第一个元素为轨迹array，第二个为区域编码"
-        "返回长度为轨迹数量的元组，每个元素是也是元组，第一个元素为轨迹array"
-        assert category_index <= self.category_sahpe[-1] and category_index>=0 , "category_index out of range"
-        
-        #n=self.dim_num-1
-        n = self.dim_num
-        trajectory_refs=self.dataset[self.dataset['sample_list'][0,category_index]][0,:]
-        # for trajectory_ref in trajectory_refs:
-        #     data_list=np.array([self.dataset[trajectory_ref[_]] for _ in range(n)]).squeeze()
-            
-        def get_array(trajectory_ref):
-            #return np.array([self.dataset[self.dataset[trajectory_ref][_,0]] for _ in range(n)],dtype=np.float32).squeeze(), np.array(self.dataset[self.dataset[trajectory_ref][n,0]],dtype=np.int32)
-            return np.array([self.dataset[self.dataset[trajectory_ref][_,0]] for _ in range(n)],dtype=np.float32).squeeze()
-        
-        return map(get_array,trajectory_refs)
-    
-    def get_length_category(self)->int:
-        """返回类型数量"""
-       
-        return  self.category_sahpe[-1]
-    
-    def get_length_trajectory(self,category_index:int)->int:
-        """返回某类型的轨迹数量"""
-        
-        assert category_index <= self.category_sahpe[-1] and category_index>=0 , "category_index out of range"
-        trajectory_shape=self.dataset[self.dataset['sample_list'][0,category_index]].shape
-        return trajectory_shape[-1]
-    
-    def sliding_window(self,matrix, window_len, n):
-        new_shape = (1 + (matrix.shape[0] - window_len) // n, window_len, matrix.shape[1])
-        new_matrix = np.zeros(new_shape)
-        for i in range(new_shape[0]):
-            new_matrix[i] = matrix[i * n : i * n + window_len]
-        if (new_shape[0] - 1) * n + window_len < matrix.shape[0]:
-            new_matrix = np.concatenate((new_matrix, matrix[-window_len:, :][np.newaxis, :, :]), axis=0)
-        return new_matrix
 
 class DatasetReader:
     def __init__(self,dataset_dir:str) -> None:
@@ -178,8 +54,8 @@ class SubDataset(Dataset):
         #(trajectory,zone_code)=self.datareader.get_trajectorys(self.category_index,trajectory_index)
         
         trajectory = self.trajectory[index]
-        file_name = self.file_names[index]
-        zones = self.extra_fea[index,:]
+        # file_name = self.file_names[index]
+        # zones = self.extra_fea[index,:]
         #return (trajectory,zone_code) , self.category_index
         #return trajectory , self.
         #return trajectory , self.category_index
@@ -187,24 +63,25 @@ class SubDataset(Dataset):
             index = 1
         else:
             index = 0
-        return trajectory , self.category_index, index, file_name, zones
-        return trajectory , self.category_index
+        #return trajectory , self.category_index, index, file_name, zones
+        return trajectory , self.category_index, index
     def __len__(self):
         #return self.datareader.get_length_trajectory(self.category_index)
         return self.trajectory_num
     
-    
+train_reader = DatasetReader("source/datasets")
+
 class SubTrainDataset(SubDataset):
     def __init__(self, category_index) -> None:
-        super().__init__(category_index,DatasetReader("/mnt/d/haitundata"))
+        super().__init__(category_index,train_reader)
 
-class SubTestDataset(SubDataset):
-    def __init__(self, category_index) -> None:
-        super().__init__(category_index,DatasetReader("/mnt/d/haitundata"))
+# class SubTestDataset(SubDataset):
+#     def __init__(self, category_index) -> None:
+#         super().__init__(category_index,DatasetReader("source/datasets"))
 
-class SubRaceDataset(SubDataset):
-    def __init__(self, category_index) -> None:
-        super().__init__(category_index,DatasetReader("/mnt/d/haitundata"))
+# class SubRaceDataset(SubDataset):
+#     def __init__(self, category_index) -> None:
+#         super().__init__(category_index,DatasetReader("source/datasets"))
 
 #%%
 def print_matrix(label_list,predict_list):
@@ -358,8 +235,8 @@ if __name__ == "__main__":
     #dataset_list.extend([SubTrainDataset(i) for i in [5,5,5,9,9,9,12,12,12]])
     train_dataset=ConcatDataset(datasets=dataset_list)
     
-    dataset_list = [SubTestDataset(i) for i in range(14)]
-    valid_dataset=ConcatDataset(datasets=dataset_list)
+    # dataset_list = [SubTestDataset(i) for i in range(14)]
+    # valid_dataset=ConcatDataset(datasets=dataset_list)
     # mydata=DataLoader(dataset1,batch_size=1,shuffle=True)
     # for index, (x, y) in enumerate(mydata):
     #     x=x
@@ -382,11 +259,11 @@ if __name__ == "__main__":
         sample_list = []
         category_index_list = []
         category_index_01_list = []
-        filename_list = []
-        extra_feature_list = []
+        # filename_list = []
+        # extra_feature_list = []
         for data in mydata:
-            filename_list.append(data[3])
-            extra_feature_list.append(data[4])
+            # filename_list.append(data[3])
+            # extra_feature_list.append(data[4])
             category_index = int(data[1].numpy())
             #category_index_vector = np.tile(category_index, sample.shape[0])
             category_index_list.append(category_index)
@@ -403,10 +280,10 @@ if __name__ == "__main__":
             
         _0_index = np.where(np.array(category_index_01_list) == 0)
         _1_index =  np.where(np.array(category_index_01_list) == 1)  
-        return sample_list,category_index_list,category_index_01_list,_0_index,_1_index,filename_list,extra_feature_list
+        return sample_list,category_index_list,category_index_01_list,_0_index,_1_index
     
-    sample_list,category_index_list,category_index_01_list,_0_index,_1_index,file_name_list,extra_feature_list = get_tracksets(train_dataset)
-    extra_feature = np.stack(extra_feature_list).squeeze()
+    sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets(train_dataset)
+    # extra_feature = np.stack(extra_feature_list).squeeze()
     print(len(sample_list))
     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TRAIN")
     #convert_collection(t,"df-list")
