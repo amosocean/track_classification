@@ -122,7 +122,15 @@ def kinetic_feature(sample_list,n_jobs:int = 1):
         sample_list = [torch.from_numpy(single_sample).to("cuda") for single_sample in sample_list]
         features = map(_kinetic_feature,sample_list)
         features_list = list(features)
-        return np.stack(features_list)
+        feature = np.stack(features_list)
+        
+        # 找到无穷大的位置
+        inf_indices = np.isinf(feature)
+
+        # 将无穷大的位置置零
+        feature[inf_indices] = 0
+        
+        return feature
     else:
         sample_list=torch.tensor(sample_list)
         _kinetic_feature_vmap = torch.vmap(_kinetic_feature,in_dims=0,out_dims=0)
