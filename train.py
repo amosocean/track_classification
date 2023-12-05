@@ -230,6 +230,7 @@ def pen_calculate(predict01, predict14, label01):
 if __name__ == "__main__":
     import time
     import aeon.datasets
+    from torch.utils.data import random_split
     from torch.utils.data import Subset
     from aeon.datasets import write_to_tsfile
     from aeon.classification.feature_based import Catch22Classifier,TSFreshClassifier,FreshPRINCEClassifier,MatrixProfileClassifier,SignatureClassifier,SummaryClassifier
@@ -255,7 +256,14 @@ if __name__ == "__main__":
     # x=list(dataset.get_category(0))
     dataset_list = [SubTrainDataset(i) for i in range(14)]
     #dataset_list.extend([SubTrainDataset(i) for i in [5,5,5,9,9,9,12,12,12]])
-    train_dataset=ConcatDataset(datasets=dataset_list)
+    datatset_all=ConcatDataset(datasets=dataset_list)
+    
+    # 假设 dataset 是你的大数据集
+    # 下面的 num1 和 num2 是你想分割成的两个数据集的大小
+    num1 = int(len(datatset_all) * 0.8)  # 比如你想让第一个数据集占80%的数据
+    num2 = len(datatset_all) - num1  # 第二个数据集的大小等于总大小减去第一个的大小
+
+    train_dataset, valid_dataset = random_split(datatset_all, [num1, num2])
     
     # dataset_list = [SubTestDataset(i) for i in range(14)]
     # valid_dataset=ConcatDataset(datasets=dataset_list)
@@ -366,7 +374,7 @@ if __name__ == "__main__":
     print(clf_0.oob_score_)
     print(clf_1.oob_score_)
     print(clf0_14.oob_score_)
-    exit()
+    
     # print(clf_01.best_params_)
     # print(clf_0 .best_params_)
     # print(clf_1 .best_params_)
@@ -377,41 +385,41 @@ if __name__ == "__main__":
     # clf_1 = clf_1.best_estimator_
     # clf0_14 = clf0_14.best_estimator_
  #%% validation   
-#     sample_list,category_index_list,category_index_01_list,_0_index,_1_index,file_name_list,extra_feature_list = get_tracksets(valid_dataset)
-#     extra_feature = np.stack(extra_feature_list).squeeze()
-#     print(len(sample_list))
-# #     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TEST")
+    sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets(valid_dataset)
+    # extra_feature = np.stack(extra_feature_list).squeeze()
+    print(len(sample_list))
+#     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TEST")
 
     
         
-    #direct_predict_list,direct_acc,direct_f1=valid_func(clf=[clf0_14,clf0_14],X_list=sample_list,y_list=category_index_list)
-#     # valid_func(clf=[clf_01,clf_01],X_list=sample_list,y_list=category_index_01_list)
+    direct_predict_list,direct_acc,direct_f1=valid_func(clf=[clf0_14,clf0_14],X_list=sample_list,y_list=category_index_list)
+    # valid_func(clf=[clf_01,clf_01],X_list=sample_list,y_list=category_index_01_list)
     
-#     #%% 01分类
-#     dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=1))
-#     #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
-#     prob = clf_01.predict_proba(dynamic_features)
-#     predict_list_01 = np.argmax(prob,axis=1)
-#     f1_bio,acc_bio = print_matrix(predict_list_01,category_index_01_list)
-#     prdict_0_index = np.where(predict_list_01 == 0)
-#     prdict_1_index = np.where(predict_list_01 == 1)
-#     #%% 
-#     # 0细分类
-#     predict_0_list = clf_0.predict(dynamic_features[prdict_0_index])
+    #%% 01分类
+    dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=1))
+    #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
+    prob = clf_01.predict_proba(dynamic_features)
+    predict_list_01 = np.argmax(prob,axis=1)
+    f1_bio,acc_bio = print_matrix(predict_list_01,category_index_01_list)
+    prdict_0_index = np.where(predict_list_01 == 0)
+    prdict_1_index = np.where(predict_list_01 == 1)
+    #%% 
+    # 0细分类
+    predict_0_list = clf_0.predict(dynamic_features[prdict_0_index])
     
-#     # 1细分类
-#     predict_1_list = clf_1.predict(dynamic_features[prdict_1_index])
+    # 1细分类
+    predict_1_list = clf_1.predict(dynamic_features[prdict_1_index])
     
-#     predict_combine = np.zeros(len(sample_list))
-#     predict_combine[prdict_0_index] = predict_0_list
-#     predict_combine[prdict_1_index] = predict_1_list
-#     predict_combine = np.int64(predict_combine).tolist()
-#     f1_multi,acc_multi = print_matrix(predict_combine,category_index_list)
-#     pen = pen_calculate(predict_list_01,predict_combine,category_index_01_list)
-#     print('Two stage F1 Score: {}'.format(((f1_bio+f1_multi)/2+(acc_bio+acc_multi)/2)/2-pen))
-#     print(pen)
+    predict_combine = np.zeros(len(sample_list))
+    predict_combine[prdict_0_index] = predict_0_list
+    predict_combine[prdict_1_index] = predict_1_list
+    predict_combine = np.int64(predict_combine).tolist()
+    f1_multi,acc_multi = print_matrix(predict_combine,category_index_list)
+    pen = pen_calculate(predict_list_01,predict_combine,category_index_01_list)
+    print('Two stage F1 Score: {}'.format(((f1_bio+f1_multi)/2+(acc_bio+acc_multi)/2)/2-pen))
+    print(pen)
     
-    
+    exit()
     #%% 比赛部分
     racedataset = SubRaceDataset(0)
     sample_list,dummy_category_index_list,dummy_category_index_01_list,dummy_0_index,dummy_1_index,file_name_list,extra_feature_list = get_tracksets(racedataset)
