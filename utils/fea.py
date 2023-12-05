@@ -17,6 +17,7 @@ def top5freqs(input_array):
 def _kinetic_feature(single_sample):
     pt_num = 95
     lat,lon,v,angle,timestep = single_sample[0:5]
+    timestep = timestep-timestep[0]
     median_T = np.median(np.diff(timestep))
     median_sample_rate = 1/median_T
     theta = angle*np.pi/180
@@ -67,7 +68,7 @@ def _kinetic_feature(single_sample):
     v_rate = np.mean(np.diff(v))
     pt_v = np.percentile(v,pt_num)
     # 速度变化率(这个不一的好,可以先不用)
-    rate_v = np.diff(v) / np.diff(np.arange(1, len(v)+1))
+    rate_v = np.diff(v) / np.diff(timestep)
     mean_rate_v = np.mean(rate_v)
     max_rate_v = np.max(rate_v)
     pt_rate_v = np.percentile(rate_v,pt_num)
@@ -121,7 +122,7 @@ def _kinetic_feature(single_sample):
     angle_75 = np.percentile(angle, 75)
 
     #航向变化率
-    rate_angle = np.diff(angle) / np.diff(np.arange(len(angle)))
+    rate_angle = np.diff(angle) / np.diff(timestep)
     mean_rate_angle = np.mean(rate_angle)
     max_rate_angle = np.max(rate_angle)
     var_rate_angle = np.var(rate_angle)
