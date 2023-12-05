@@ -75,7 +75,7 @@ class SubDataset_split(SubDataset):
         self.trajectory,lat,lon,self.file_names=self.datareader.get_trajectorys(self.category_index)
         self.extra_fea = np.array([lat,lon]).squeeze().T
         self.trajectory_num = len(self.trajectory)
-        self.trajectory_splited = self.split_trajectory(50)
+        self.trajectory = self.split_trajectory(50)
         
     def split_trajectory(self, window_size):
         result = []
@@ -85,8 +85,12 @@ class SubDataset_split(SubDataset):
                 if i + window_size <= traj.shape[1]:
                     split_traj.append(traj[:, i: i + window_size])
                 else:  # edge case where window_size > remaining traj length
+                    # Padding with last element when the remaining trajectory is
+                    # shorter than the window_size
+                    padding = np.full((traj.shape[0], i + window_size - traj.shape[1]), 
+                                    traj[:, -1].reshape(-1, 1))
+                    split_traj.append(np.concatenate((traj[:, i:], padding), axis=1))
                     continue
-                    split_traj.append(traj[:, i:])
             result.append(split_traj)
         return result
     
@@ -312,7 +316,39 @@ if __name__ == "__main__":
         _1_index =  np.where(np.array(category_index_01_list) == 1)  
         return sample_list,category_index_list,category_index_01_list,_0_index,_1_index
     
-    sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets(train_dataset)
+    def get_tracksets_split(dataset):
+        mydata=DataLoader(dataset,batch_size=1,shuffle=False)
+        sample_list = []
+        category_index_list = []
+        category_index_01_list = []
+        # filename_list = []
+        # extra_feature_list = []
+        for data in mydata:
+            # filename_list.append(data[3])
+            # extra_feature_list.append(data[4])
+            category_index = int(data[1].numpy())
+            category_index = [category_index]*len(data[0])
+            #category_index_vector = np.tile(category_index, sample.shape[0])
+            category_index_list.extend(category_index)
+            
+            category_index_01 = int(data[2].numpy())
+            category_index_01 = [category_index_01]*len(data[0])
+            #category_index_vector = np.tile(category_index, sample.shape[0])
+            category_index_01_list.extend(category_index_01)
+            #category_index_list.append(category_index_vector)
+            
+            window_list=data[0]
+            window_list = [window.squeeze(dim=0).numpy() for window in window_list]
+            
+            # t= np.isnan(sample)
+            # assert not np.any(t) , "Has Nan!"
+            sample_list.extend(window_list)
+            
+        _0_index = np.where(np.array(category_index_01_list) == 0)
+        _1_index =  np.where(np.array(category_index_01_list) == 1)  
+        return sample_list,category_index_list,category_index_01_list,_0_index,_1_index
+    
+    sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets_split(train_dataset)
     # extra_feature = np.stack(extra_feature_list).squeeze()
     print(len(sample_list))
     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TRAIN")
