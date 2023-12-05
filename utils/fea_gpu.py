@@ -43,7 +43,7 @@ def _kinetic_feature(single_sample):
 
     start_1 = lat[0]
     start_2 = lon[0]
-    end = len(lat) - 1
+    end = lat.shape[0] - 1
     mid1 = int(end / 2)
     mid2 = int(end / 2)
     mid_1 = lat[mid1]
@@ -77,12 +77,12 @@ def _kinetic_feature(single_sample):
     spectrum = torch.fft.fftshift(torch.fft.fft(points))
     pt_spectrum = torch.quantile(torch.abs(spectrum), pt_num)
     pt_index = (torch.abs(spectrum - pt_spectrum)).argmin()
-    pt_freq = (pt_index - len(timestep) / 2) / (len(timestep) / 2) * median_sample_rate / 2
+    pt_freq = (pt_index - (timestep.shape[0]) / 2) / ((timestep.shape[0]) / 2) * median_sample_rate 
 
     spectrum = torch.fft.fftshift(torch.fft.fft(v_vec))
     pt_spectrum = torch.quantile(torch.abs(spectrum), pt_num)
     pt_index = (torch.abs(spectrum - pt_spectrum)).argmin()
-    pt_freq_v = (pt_index - len(timestep) / 2) / (len(timestep) / 2) * median_sample_rate / 2
+    pt_freq_v = (pt_index - (timestep.shape[0]) / 2) / ((timestep.shape[0]) / 2) * median_sample_rate 
 
     mean_angle = torch.mean(angle)
     max_angle = torch.quantile(angle, 0.95)
@@ -112,26 +112,24 @@ def _kinetic_feature(single_sample):
         mean_rate_angle, max_rate_angle, var_rate_angle, min_rate_angle,
         #fft_lat[0], fft_lat[1], fft_lon[0], fft_lon[1], fft_v[0], fft_v[1], fft_angle[0], fft_angle[1]
     ]
-    feature = torch.stack(feature_list)
+    feature = torch.stack(feature_list,dim=0)
     
-    return feature
+    return feature.cpu()
 
-_kinetic_feature_vmap = torch.vmap(_kinetic_feature)
 
 def kinetic_feature(sample_list,n_jobs:int = 1):
     sample_list = [torch.from_numpy(single_sample).to("cuda") for single_sample in sample_list]
     if n_jobs == 1: 
         features = map(_kinetic_feature,sample_list)
-        
+        features_list = list(features)
+        return np.stack(features_list)
     else:
-        with TreadPool(processes=n_jobs) as pool:
-            _kinetic_feature_vmap = torch.vmap(_kinetic_feature)
-            features=_kinetic_feature_vmap(sample_list)
-    
-    return features.detach().cpu().numpy()
+        _kinetic_feature_vmap = torch.vmap(_kinetic_feature,in_dims=0,out_dims=0)
+        features=_kinetic_feature_vmap(sample_list[0])
+        return features.numpy()
     
 if __name__ == "__main__":
-    sample = np.random.rand(10,6,120)
+    sample = np.random.rand(13,6,120)
     
     a=kinetic_feature(sample,n_jobs=2)
-   # print(a)
+    print(a)
