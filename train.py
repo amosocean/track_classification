@@ -207,6 +207,7 @@ def pen_calculate(predict01, predict14, label01):
     return Pen
         
 if __name__ == "__main__":
+    import time
     import aeon.datasets
     from torch.utils.data import Subset
     from aeon.datasets import write_to_tsfile
@@ -226,7 +227,7 @@ if __name__ == "__main__":
     from sklearn.gaussian_process.kernels import RBF
     from sklearn.decomposition import PCA
     from aeon.classification.compose import WeightedEnsembleClassifier
-    from utils.fea import kinetic_feature
+    from utils.fea_gpu import kinetic_feature
     from sklearn.model_selection import GridSearchCV,RandomizedSearchCV
     # dataset=Dataset()
     # print(dataset.get_trajectorys(0,0))
@@ -320,8 +321,17 @@ if __name__ == "__main__":
     X=sample_list
     #y = np.concatenate(category_index_list,axis=0)
     y = np.array(category_index_list)
-    
+    start_time = time.time()
+
     dynamic_features = np.array(kinetic_feature(X,n_jobs=1))
+
+    # End timer
+    end_time = time.time()
+
+    # Calculate elapsed time
+    elapsed_time = end_time - start_time
+
+    print(f"The code took {elapsed_time} seconds to run.")
     #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
     #catch22_features = np.array(tnf.fit_transform(X))
     #catch22_features = pca.fit_transform(catch22_features)
