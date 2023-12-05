@@ -130,6 +130,12 @@ def kinetic_feature(sample_list,n_jobs:int = 1):
         # 将无穷大的位置置零
         feature[inf_indices] = 0
         
+        # 找到NaN的位置
+        inf_indices = np.isnan(feature)
+
+        # 将Nan的位置置零
+        feature[inf_indices] = 0
+        
         return feature
     else:
         sample_list=torch.tensor(sample_list)
