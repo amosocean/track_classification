@@ -227,7 +227,7 @@ if __name__ == "__main__":
     from sklearn.gaussian_process.kernels import RBF
     from sklearn.decomposition import PCA
     from aeon.classification.compose import WeightedEnsembleClassifier
-    from utils.fea_gpu import kinetic_feature
+    from utils.fea import kinetic_feature
     from sklearn.model_selection import GridSearchCV,RandomizedSearchCV
     # dataset=Dataset()
     # print(dataset.get_trajectorys(0,0))

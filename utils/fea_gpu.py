@@ -12,14 +12,12 @@ def top5freqs(input_array):
 
     # Find the indices of the 5 highest power frequencies
     idx = torch.topk(powerSpectrum, k=2, dim=-1).indices
-
-    top_freqs = [input_array[i] for i in idx]
+    top_freqs = idx/input_array.shape[0]
 
     return top_freqs
 
 
 def _kinetic_feature(single_sample):
-    single_sample=torch.from_numpy(single_sample).to("cuda")
     pt_num = 0.95
     lat, lon, v, angle, timestep = single_sample[0:5]
     timestep = timestep-timestep[0]
@@ -30,12 +28,12 @@ def _kinetic_feature(single_sample):
     v_vec = v * torch.exp(1j * theta)
 
     diff = torch.diff(points)
-    if torch.any(diff.imag > 350):
-        index1 = torch.where(diff.imag > 350)
-        diff.imag[index1] = diff.imag[index1] - 360
-    if torch.any(diff.imag < -350):
-        index1 = torch.where(diff.imag < -350)
-        diff.imag[index1] = diff.imag[index1] + 360
+    # if torch.any(diff.imag > 350):
+    #     index1 = torch.where(diff.imag > 350)
+    #     diff.imag[index1] = diff.imag[index1] - 360
+    # if torch.any(diff.imag < -350):
+    #     index1 = torch.where(diff.imag < -350)
+    #     diff.imag[index1] = diff.imag[index1] + 360
 
     points = torch.roll(points, 1)
     distances = torch.abs(diff)
@@ -100,10 +98,10 @@ def _kinetic_feature(single_sample):
     var_rate_angle = torch.var(rate_angle)
     min_rate_angle = torch.min(rate_angle)
 
-    fft_lat = top5freqs(lat)
-    fft_lon = top5freqs(lon)
-    fft_v = top5freqs(v)
-    fft_angle = top5freqs(angle)
+    # fft_lat = top5freqs(lat)*median_sample_rate
+    # fft_lon = top5freqs(lon)*median_sample_rate
+    # fft_v = top5freqs(v)*median_sample_rate
+    # fft_angle = top5freqs(angle)*median_sample_rate
 
     feature_list = [
         dis, pt_distances, start_1, start_2, mid_1, mid_2, end_1, end_2,
@@ -112,23 +110,28 @@ def _kinetic_feature(single_sample):
         angle_diff_max, angle_diff_mean, pt_freq, pt_freq_v,
         mean_angle, max_angle, var_angle, min_angle, angle_20, angle_50, angle_75,
         mean_rate_angle, max_rate_angle, var_rate_angle, min_rate_angle,
-        fft_lat[0], fft_lat[1], fft_lon[0], fft_lon[1], fft_v[0], fft_v[1], fft_angle[0], fft_angle[1]
+        #fft_lat[0], fft_lat[1], fft_lon[0], fft_lon[1], fft_v[0], fft_v[1], fft_angle[0], fft_angle[1]
     ]
-    feature = torch.tensor(feature_list)
+    feature = torch.stack(feature_list)
     
-    return feature.detach().numpy()
+    return feature
+
+_kinetic_feature_vmap = torch.vmap(_kinetic_feature)
 
 def kinetic_feature(sample_list,n_jobs:int = 1):
+    sample_list = [torch.from_numpy(single_sample).to("cuda") for single_sample in sample_list]
     if n_jobs == 1: 
         features = map(_kinetic_feature,sample_list)
-        return list(features)
+        
     else:
         with TreadPool(processes=n_jobs) as pool:
-            features = pool.map(_kinetic_feature,sample_list)
-        return list(features)
-
+            _kinetic_feature_vmap = torch.vmap(_kinetic_feature)
+            features=_kinetic_feature_vmap(sample_list)
+    
+    return features.detach().cpu().numpy()
+    
 if __name__ == "__main__":
     sample = np.random.rand(10,6,120)
     
-    a=kinetic_feature(sample,n_jobs=1)
+    a=kinetic_feature(sample,n_jobs=2)
    # print(a)
