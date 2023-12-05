@@ -227,7 +227,7 @@ if __name__ == "__main__":
     from sklearn.gaussian_process.kernels import RBF
     from sklearn.decomposition import PCA
     from aeon.classification.compose import WeightedEnsembleClassifier
-    from utils.fea import kinetic_feature
+    from utils.fea_gpu import kinetic_feature
     from sklearn.model_selection import GridSearchCV,RandomizedSearchCV
     # dataset=Dataset()
     # print(dataset.get_trajectorys(0,0))
@@ -323,7 +323,7 @@ if __name__ == "__main__":
     y = np.array(category_index_list)
     start_time = time.time()
 
-    dynamic_features = np.array(kinetic_feature(X,n_jobs=1))
+    dynamic_features = kinetic_feature(X,n_jobs=1)
 
     # End timer
     end_time = time.time()
