@@ -47,8 +47,6 @@ class SubDataset(Dataset):
         self.trajectory_num = len(self.trajectory)
         
         
-        
-
     def __getitem__(self,index)->(np.array,int):
         
         #(trajectory,zone_code)=self.datareader.get_trajectorys(self.category_index,trajectory_index)
@@ -69,9 +67,32 @@ class SubDataset(Dataset):
         #return self.datareader.get_length_trajectory(self.category_index)
         return self.trajectory_num
     
+class SubDataset_split(SubDataset):
+    def  __init__(self, category_index, datareader) -> None:
+        super().__init__(category_index, datareader)
+        
+    def read_data(self):
+        self.trajectory,lat,lon,self.file_names=self.datareader.get_trajectorys(self.category_index)
+        self.extra_fea = np.array([lat,lon]).squeeze().T
+        self.trajectory_num = len(self.trajectory)
+        self.trajectory_splited = self.split_trajectory(50)
+        
+    def split_trajectory(self, window_size):
+        result = []
+        for traj in self.trajectory:
+            split_traj = []
+            for i in range(0, traj.shape[1], window_size):
+                if i + window_size <= traj.shape[1]:
+                    split_traj.append(traj[:, i: i + window_size])
+                else:  # edge case where window_size > remaining traj length
+                    continue
+                    split_traj.append(traj[:, i:])
+            result.append(split_traj)
+        return result
+    
 train_reader = DatasetReader("source/datasets")
 
-class SubTrainDataset(SubDataset):
+class SubTrainDataset(SubDataset_split):
     def __init__(self, category_index) -> None:
         super().__init__(category_index,train_reader)
 
