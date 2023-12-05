@@ -118,18 +118,20 @@ def _kinetic_feature(single_sample):
 
 
 def kinetic_feature(sample_list,n_jobs:int = 1):
-    sample_list = [torch.from_numpy(single_sample).to("cuda") for single_sample in sample_list]
     if n_jobs == 1: 
+        sample_list = [torch.from_numpy(single_sample).to("cuda") for single_sample in sample_list]
         features = map(_kinetic_feature,sample_list)
         features_list = list(features)
         return np.stack(features_list)
     else:
+        sample_list=torch.tensor(sample_list)
         _kinetic_feature_vmap = torch.vmap(_kinetic_feature,in_dims=0,out_dims=0)
-        features=_kinetic_feature_vmap(sample_list[0])
+        sample_list=list(sample_list)
+        features=_kinetic_feature_vmap(sample_list)
         return features.numpy()
     
 if __name__ == "__main__":
     sample = np.random.rand(13,6,120)
     
-    a=kinetic_feature(sample,n_jobs=2)
+    a=kinetic_feature(sample,n_jobs=1)
     print(a)
