@@ -81,8 +81,8 @@ class SubDataset_split(SubDataset):
         result = []
         for traj in self.trajectory:
             split_traj = []
-            for i in range(0, traj.shape[1], window_size):
-                if i + window_size <= traj.shape[1]:
+            for i in range(0, 100, window_size):
+                if i + window_size <= 100:
                     split_traj.append(traj[:, i: i + window_size])
                 else:  # edge case where window_size > remaining traj length
                     # Padding with last element when the remaining trajectory is
@@ -179,7 +179,7 @@ def valid_func(clf,X_list:List,y_list:List)->None:
     #     result_prob = clf.predict_proba(X)
     #     label_list.append(y[0])
     #     predict_list.append(predict_prob_func(result_prob))
-    dynamic_features = np.array(kinetic_feature(X_list,n_jobs=1))
+    dynamic_features = np.array(kinetic_feature(X_list,n_jobs=2))
     #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
     #catch22_features = np.array(tnf.fit_transform(X_list))
     
@@ -388,7 +388,7 @@ if __name__ == "__main__":
     y = np.array(category_index_list)
     start_time = time.time()
 
-    dynamic_features = kinetic_feature(X,n_jobs=1)
+    dynamic_features = kinetic_feature(X,n_jobs=2)
 
     # End timer
     end_time = time.time()
