@@ -21,6 +21,10 @@ def classify(track_split_list):
     print(len(track_split_list))
     return [2,3,4]
 
+def merge_windows(win_list):
+    track = np.concatenate(win_list,axis=-1)
+    return track
+
 def main():
     global Pack_buffer
     Pack_buffer = Queue()
@@ -37,7 +41,7 @@ def main():
             if current_split["flag"]:
                 pass  #处理最后一个不完整分片
             local_dict[track_id].append(current_split["track"])
-            result = classify(local_dict[track_id])
+            result = classify(merge_windows(local_dict[track_id]))
             if current_split["flag"]:
                 local_dict.pop(track_id) #轨迹split已经全部识别删除这条轨迹
             print(result)
