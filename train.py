@@ -75,22 +75,25 @@ class SubDataset_split(SubDataset):
         self.trajectory,lat,lon,self.file_names=self.datareader.get_trajectorys(self.category_index)
         self.extra_fea = np.array([lat,lon]).squeeze().T
         self.trajectory_num = len(self.trajectory)
-        self.trajectory = self.split_trajectory(50)
+        self.trajectory = self.split_trajectory([50,100])
         
-    def split_trajectory(self, window_size):
+    def split_trajectory(self, window_size_list):
         result = []
         for traj in self.trajectory:
+            traj_length = traj.shape[1]
             split_traj = []
-            for i in range(0, 100, window_size):
-                if i + window_size <= 100:
-                    split_traj.append(traj[:, i: i + window_size])
-                else:  # edge case where window_size > remaining traj length
-                    # Padding with last element when the remaining trajectory is
-                    # shorter than the window_size
-                    padding = np.full((traj.shape[0], i + window_size - traj.shape[1]), 
-                                    traj[:, -1].reshape(-1, 1))
-                    split_traj.append(np.concatenate((traj[:, i:], padding), axis=1))
-                    continue
+            for window_size in window_size_list:
+                for i in range(0, 500, np.int64(np.log2(window_size)*8.87)):
+                    if i + window_size <= 500 and i + window_size <= traj_length:
+                        split_traj.append(traj[:, i: i + window_size])
+                    else:  # edge case where window_size > remaining traj length
+                        # Padding with last element when the remaining trajectory is
+                        # shorter than the window_size
+                        continue
+                        padding = np.full((traj.shape[0], i + window_size - traj.shape[1]), 
+                                        traj[:, -1].reshape(-1, 1))
+                        split_traj.append(np.concatenate((traj[:, i:], padding), axis=1))
+                        continue
             result.append(split_traj)
         return result
     
@@ -236,25 +239,10 @@ if __name__ == "__main__":
     import aeon.datasets
     from torch.utils.data import random_split
     from torch.utils.data import Subset
-    from aeon.datasets import write_to_tsfile
-    from aeon.classification.feature_based import Catch22Classifier,TSFreshClassifier,FreshPRINCEClassifier,MatrixProfileClassifier,SignatureClassifier,SummaryClassifier
-    from aeon.classification.interval_based import CanonicalIntervalForestClassifier
-    from aeon.classification.hybrid import HIVECOTEV2
-    from aeon.classification.shapelet_based import ShapeletTransformClassifier
-    from aeon.classification.distance_based import ElasticEnsemble
-    from aeon.transformations.collection import Catch22
-    from sklearn.ensemble import RandomForestClassifier,AdaBoostClassifier
-    from sklearn.neighbors import KNeighborsClassifier
-    from sklearn.svm import SVC
-    from sklearn.neural_network import MLPClassifier
-    from sklearn.tree import DecisionTreeClassifier
-    from sklearn.naive_bayes import GaussianNB
-    from sklearn.gaussian_process import GaussianProcessClassifier
-    from sklearn.gaussian_process.kernels import RBF
-    from sklearn.decomposition import PCA
-    from aeon.classification.compose import WeightedEnsembleClassifier
-    from utils.fea_gpu import kinetic_feature
+    from sklearn.ensemble import RandomForestClassifier
+    from utils.fea_gpu_stream import kinetic_feature
     from sklearn.model_selection import GridSearchCV,RandomizedSearchCV
+    import random
     # dataset=Dataset()
     # print(dataset.get_trajectorys(0,0))
     # x=list(dataset.get_category(0))
@@ -348,6 +336,41 @@ if __name__ == "__main__":
         _1_index =  np.where(np.array(category_index_01_list) == 1)  
         return sample_list,category_index_list,category_index_01_list,_0_index,_1_index
     
+    def get_tracksets_split_test(dataset):
+        mydata=DataLoader(dataset,batch_size=1,shuffle=False)
+        sample_list = []
+        category_index_list = []
+        category_index_01_list = []
+        # filename_list = []
+        # extra_feature_list = []
+        for data in mydata:
+            # for split in data[0]:
+            #     split.squeeze(dim=0).shape[0].numpy()
+            #     t = 1
+            data[0] = [split for split in data[0] if split.shape[-1]==50]
+            sample = random.choices(data[0]).squeeze(dim=0).numpy()
+            # k = min(len(data[0]),3)
+            # sample = random.sample(data[0],k).squeeze(dim=0).numpy()
+            # filename_list.append(data[3])
+            # extra_feature_list.append(data[4])
+            category_index = int(data[1].numpy())
+            #category_index_vector = np.tile(category_index, sample.shape[0])
+            category_index_list.append(category_index)
+            
+            category_index_01 = int(data[2].numpy())
+            #category_index_vector = np.tile(category_index, sample.shape[0])
+            category_index_01_list.append(category_index_01)
+            #category_index_list.append(category_index_vector)
+            
+            
+            # t= np.isnan(sample)
+            # assert not np.any(t) , "Has Nan!"
+            sample_list.append(sample)
+            
+        _0_index = np.where(np.array(category_index_01_list) == 0)
+        _1_index =  np.where(np.array(category_index_01_list) == 1)  
+        return sample_list,category_index_list,category_index_01_list,_0_index,_1_index
+    
     sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets_split(train_dataset)
     # extra_feature = np.stack(extra_feature_list).squeeze()
     print(len(sample_list))
@@ -388,7 +411,7 @@ if __name__ == "__main__":
     y = np.array(category_index_list)
     start_time = time.time()
 
-    dynamic_features = kinetic_feature(X,n_jobs=2)
+    dynamic_features = kinetic_feature(X,n_jobs=1)
 
     # End timer
     end_time = time.time()
@@ -421,7 +444,7 @@ if __name__ == "__main__":
     # clf_1 = clf_1.best_estimator_
     # clf0_14 = clf0_14.best_estimator_
  #%% validation   
-    sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets(valid_dataset)
+    sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets_split_test(valid_dataset)
     # extra_feature = np.stack(extra_feature_list).squeeze()
     print(len(sample_list))
 #     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TEST")
@@ -455,6 +478,9 @@ if __name__ == "__main__":
     print('Two stage F1 Score: {}'.format(((f1_bio+f1_multi)/2+(acc_bio+acc_multi)/2)/2-pen))
     print(pen)
     
+    pen = pen_calculate(predict_list_01,direct_predict_list,category_index_01_list)
+    print('Direct Combine F1 Score with penalty: {}'.format(((f1_bio+direct_f1)/2+(acc_bio+direct_acc)/2)/2-pen))
+    print(pen)
     exit()
     #%% 比赛部分
     racedataset = SubRaceDataset(0)
