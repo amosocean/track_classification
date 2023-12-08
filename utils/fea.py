@@ -1,7 +1,7 @@
 import numpy as np
 from multiprocessing.dummy import Pool as TreadPool
 import heapq
-
+import time
 def top5freqs(input_array):
     fftResult = np.fft.fft(input_array)
 
@@ -172,7 +172,13 @@ def kinetic_feature(sample_list,n_jobs:int = 1):
         return list(features)
 
 if __name__ == "__main__":
-    sample = np.random.rand(10,6,120)
-    
+    sample = np.random.rand(1,6,2000)
+    t1 = time.time()
     a=kinetic_feature(sample,n_jobs=1)
-    b=1
+    print(time.time()-t1)
+    t1 = time.time()
+    a=kinetic_feature(sample,n_jobs=1)
+    print(time.time()-t1)
+    t1 = time.time()
+    a=kinetic_feature(sample,n_jobs=1)
+    print(time.time()-t1)

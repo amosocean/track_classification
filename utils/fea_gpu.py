@@ -2,7 +2,7 @@ import numpy as np
 from multiprocessing.dummy import Pool as TreadPool
 import heapq
 import torch
-
+import time
 def top5freqs(input_array):
     x = input_array
     fftResult = torch.fft.fft(x)
@@ -16,7 +16,8 @@ def top5freqs(input_array):
 
     return top_freqs
 
-
+#@torch.jit.script
+#@torch.compile
 def _kinetic_feature(single_sample):
     pt_num = 0.95
     lat, lon, v, angle, timestep = single_sample[0:5]
@@ -119,7 +120,7 @@ def _kinetic_feature(single_sample):
 
 def kinetic_feature(sample_list,n_jobs:int = 1):
     if n_jobs == 1: 
-        sample_list = [torch.from_numpy(single_sample).to("cuda") for single_sample in sample_list]
+        sample_list = [torch.from_numpy(single_sample).to("cpu") for single_sample in sample_list]
         features = map(_kinetic_feature,sample_list)
         features_list = list(features)
         feature = np.stack(features_list)
@@ -145,7 +146,14 @@ def kinetic_feature(sample_list,n_jobs:int = 1):
         return features.numpy()
     
 if __name__ == "__main__":
-    sample = np.random.rand(13,6,120)
-    
+    sample = np.random.rand(1,6,2000)
+    t1 = time.time()
     a=kinetic_feature(sample,n_jobs=1)
-    print(a)
+    print(time.time()-t1)
+    t1 = time.time()
+    a=kinetic_feature(sample,n_jobs=1)
+    print(time.time()-t1)
+    t1 = time.time()
+    a=kinetic_feature(sample,n_jobs=1)
+    print(time.time()-t1)
+   # print(a)

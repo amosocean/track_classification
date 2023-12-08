@@ -2,7 +2,7 @@ import numpy as np
 from multiprocessing.dummy import Pool as TreadPool
 import heapq
 import torch
-
+import time
 def top5freqs(input_array):
     x = input_array
     fftResult = torch.fft.fft(x)
@@ -186,7 +186,13 @@ def kinetic_feature(sample_list,n_jobs:int = 1):
         return features
     
 if __name__ == "__main__":
-    sample = np.random.rand(100,6,120)
-    
-    a=kinetic_feature(sample,n_jobs=2)
-    print(a)
+    sample = np.random.rand(1,6,2000)
+    t1 = time.time()
+    a=kinetic_feature(sample,n_jobs=1)
+    print(time.time()-t1)
+    t1 = time.time()
+    a=kinetic_feature(sample,n_jobs=1)
+    print(time.time()-t1)
+    t1 = time.time()
+    a=kinetic_feature(sample,n_jobs=1)
+    print(time.time()-t1)
