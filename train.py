@@ -182,7 +182,7 @@ def valid_func(clf,X_list:List,y_list:List)->None:
     #     result_prob = clf.predict_proba(X)
     #     label_list.append(y[0])
     #     predict_list.append(predict_prob_func(result_prob))
-    dynamic_features = np.array(kinetic_feature(X_list,n_jobs=1))
+    dynamic_features = np.array(batch_kinetic(kinetic_feature)(sample_list))
     #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
     #catch22_features = np.array(tnf.fit_transform(X_list))
     
@@ -507,7 +507,7 @@ if __name__ == "__main__":
     # valid_func(clf=[clf_01,clf_01],X_list=sample_list,y_list=category_index_01_list)
     
     #%% 01分类
-    dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=1))
+    dynamic_features = np.array(batch_kinetic(kinetic_feature)(sample_list))
     #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
     prob = clf_01.predict_proba(dynamic_features)
     predict_list_01 = np.argmax(prob,axis=1)
@@ -539,7 +539,7 @@ if __name__ == "__main__":
     sample_list,dummy_category_index_list,dummy_category_index_01_list,dummy_0_index,dummy_1_index,file_name_list,extra_feature_list = get_tracksets(racedataset)
     print(len(sample_list))
      #%% 01分类
-    dynamic_features = np.array(kinetic_feature(sample_list,n_jobs=1))
+    dynamic_features = np.array(batch_kinetic(kinetic_feature)(sample_list))
     nan_index = np.where(np.isnan(dynamic_features))
     print(nan_index)
     #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
