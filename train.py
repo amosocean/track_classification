@@ -182,7 +182,7 @@ def valid_func(clf,X_list:List,y_list:List)->None:
     #     result_prob = clf.predict_proba(X)
     #     label_list.append(y[0])
     #     predict_list.append(predict_prob_func(result_prob))
-    dynamic_features = np.array(kinetic_feature(X_list,n_jobs=2))
+    dynamic_features = np.array(kinetic_feature(X_list,n_jobs=1))
     #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
     #catch22_features = np.array(tnf.fit_transform(X_list))
     
@@ -233,7 +233,55 @@ def pen_calculate(predict01, predict14, label01):
     err2 = err2 / N
     Pen = 0.5 * err1 + 0.2 * err2
     return Pen
+    
+def batch_kinetic(func):
+    def wrapper(sample_list):
+        from operator import itemgetter 
+        #X=np.array(sample_list)
+        # X = np.concatenate(sample_list,axis=0)
+        #y = np.concatenate(category_index_list,axis=0)
+        start_time = time.time()
+        tensor_lengths = [t.shape[-1] for t in sample_list]
+        tensor_indices = list(range(len(sample_list)))
+
+        # 将上述列表合并为一个列表并按照length排序
+        length_index_tensors = sorted(zip(tensor_lengths, tensor_indices, sample_list), key=itemgetter(0))
+
+        # 将同样长度的tensor分别组装为batch
+        batches = []
+        current_length = length_index_tensors[0][0]
+        current_batch_indices = []
+        current_batch_tensors = []
+        for length, index, tensor in length_index_tensors:
+            if length != current_length:
+                batches.append((current_length, current_batch_indices, current_batch_tensors))
+                current_length = length
+                current_batch_indices = []
+                current_batch_tensors = []
+            current_batch_indices.append(index)
+            current_batch_tensors.append(tensor)
+        batches.append((current_length, current_batch_indices, current_batch_tensors))
+
+        outputs = []
+        for length, indices, batch in batches:
+            batch = np.stack(batch)
+            batch_output = func(batch,n_jobs=2)
+            outputs.extend(zip(indices, batch_output))
         
+        # 根据index对计算结果进行排序
+        outputs.sort(key=itemgetter(0))
+        dynamic_features = [output for index, output in outputs]
+        dynamic_features = np.stack(dynamic_features)
+        
+        end_time = time.time()
+
+        # Calculate elapsed time
+        elapsed_time = end_time - start_time
+        print(f"The code took {elapsed_time} seconds to run.")
+        
+        return dynamic_features
+    return wrapper
+
 if __name__ == "__main__":
     import time
     import aeon.datasets
@@ -409,56 +457,21 @@ if __name__ == "__main__":
     #X=np.array(sample_list)
     # X = np.concatenate(sample_list,axis=0)
     X=sample_list
-    #y = np.concatenate(category_index_list,axis=0)
-    start_time = time.time()
-    tensor_lengths = [t.shape[-1] for t in sample_list]
-    tensor_indices = list(range(len(sample_list)))
-
-    # 将上述列表合并为一个列表并按照length排序
-    length_index_tensors = sorted(zip(tensor_lengths, tensor_indices, sample_list), key=itemgetter(0))
-
-    # 将同样长度的tensor分别组装为batch
-    batches = []
-    current_length = length_index_tensors[0][0]
-    current_batch_indices = []
-    current_batch_tensors = []
-    for length, index, tensor in length_index_tensors:
-        if length != current_length:
-            batches.append((current_length, current_batch_indices, current_batch_tensors))
-            current_length = length
-            current_batch_indices = []
-            current_batch_tensors = []
-        current_batch_indices.append(index)
-        current_batch_tensors.append(tensor)
-    batches.append((current_length, current_batch_indices, current_batch_tensors))
-
-    outputs = []
-    for length, indices, batch in batches:
-        batch = np.stack(batch)
-        batch_output = kinetic_feature(batch,n_jobs=2)
-        outputs.extend(zip(indices, batch_output))
-    
-    # 根据index对计算结果进行排序
-    outputs.sort(key=itemgetter(0))
-    dynamic_features = [output for index, output in outputs]
-    
     # End timer
-    end_time = time.time()
-
-    # Calculate elapsed time
-    elapsed_time = end_time - start_time
-    print(f"The code took {elapsed_time} seconds to run.")
-    start_time = time.time()
-
-    dynamic_features = kinetic_feature(X,n_jobs=1)
     
-    # End timer
-    end_time = time.time()
+    dynamic_features =batch_kinetic(kinetic_feature)(sample_list)
+    
+    # start_time = time.time()
 
-    # Calculate elapsed time
-    elapsed_time = end_time - start_time
+    # dynamic_features = kinetic_feature(X,n_jobs=1)
+    
+    # # End timer
+    # end_time = time.time()
 
-    print(f"The code took {elapsed_time} seconds to run.")
+    # # Calculate elapsed time
+    # elapsed_time = end_time - start_time
+
+    # print(f"The code took {elapsed_time} seconds to run.")
     #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
     #catch22_features = np.array(tnf.fit_transform(X))
     #catch22_features = pca.fit_transform(catch22_features)
