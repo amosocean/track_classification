@@ -21,6 +21,11 @@ def top5freqs(input_array):
 def _kinetic_feature(single_sample):
     pt_num = 0.95
     lat, lon, v, angle, timestep = single_sample[0:5]
+    # lat = single_sample[:,0,:] 
+    # lon = single_sample[:,1,:] 
+    # v = single_sample[:,2,:] 
+    # angle = single_sample[:,3,:] 
+    # timestep = single_sample[:,4,:]
     timestep = timestep-timestep[0]
     median_T = torch.median(torch.diff(timestep))
     median_sample_rate = 1 / median_T
@@ -139,9 +144,8 @@ def kinetic_feature(sample_list,n_jobs:int = 1):
         
         return feature
     else:
-        sample_list=torch.tensor(sample_list)
+        sample_list = torch.tensor(sample_list,device="cuda")
         _kinetic_feature_vmap = torch.vmap(_kinetic_feature,in_dims=0,out_dims=0)
-        sample_list=list(sample_list)
         features=_kinetic_feature_vmap(sample_list)
         return features.numpy()
     

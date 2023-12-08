@@ -75,7 +75,7 @@ class SubDataset_split(SubDataset):
         self.trajectory,lat,lon,self.file_names=self.datareader.get_trajectorys(self.category_index)
         self.extra_fea = np.array([lat,lon]).squeeze().T
         self.trajectory_num = len(self.trajectory)
-        self.trajectory = self.split_trajectory([50,100])
+        self.trajectory = self.split_trajectory([50,100,150,200])
         
     def split_trajectory(self, window_size_list):
         result = []
@@ -240,7 +240,7 @@ if __name__ == "__main__":
     from torch.utils.data import random_split
     from torch.utils.data import Subset
     from sklearn.ensemble import RandomForestClassifier
-    from utils.fea_gpu_stream import kinetic_feature
+    from utils.fea_gpu import kinetic_feature
     from sklearn.model_selection import GridSearchCV,RandomizedSearchCV
     import random
     # dataset=Dataset()
@@ -348,7 +348,7 @@ if __name__ == "__main__":
             #     split.squeeze(dim=0).shape[0].numpy()
             #     t = 1
             data[0] = [split for split in data[0] if split.shape[-1]==50]
-            sample = random.choices(data[0]).squeeze(dim=0).numpy()
+            sample = random.choice(data[0]).squeeze(dim=0).numpy()
             # k = min(len(data[0]),3)
             # sample = random.sample(data[0],k).squeeze(dim=0).numpy()
             # filename_list.append(data[3])
@@ -403,16 +403,55 @@ if __name__ == "__main__":
     # clf_0 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=10,n_jobs=-1) 
     # clf_1 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=10,n_jobs=-1) 
     # clf0_14 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=10,n_jobs=-1) 
-
+    y = np.array(category_index_list)
+    
+    from operator import itemgetter 
     #X=np.array(sample_list)
     # X = np.concatenate(sample_list,axis=0)
     X=sample_list
     #y = np.concatenate(category_index_list,axis=0)
-    y = np.array(category_index_list)
+    start_time = time.time()
+    tensor_lengths = [t.shape[-1] for t in sample_list]
+    tensor_indices = list(range(len(sample_list)))
+
+    # 将上述列表合并为一个列表并按照length排序
+    length_index_tensors = sorted(zip(tensor_lengths, tensor_indices, sample_list), key=itemgetter(0))
+
+    # 将同样长度的tensor分别组装为batch
+    batches = []
+    current_length = length_index_tensors[0][0]
+    current_batch_indices = []
+    current_batch_tensors = []
+    for length, index, tensor in length_index_tensors:
+        if length != current_length:
+            batches.append((current_length, current_batch_indices, current_batch_tensors))
+            current_length = length
+            current_batch_indices = []
+            current_batch_tensors = []
+        current_batch_indices.append(index)
+        current_batch_tensors.append(tensor)
+    batches.append((current_length, current_batch_indices, current_batch_tensors))
+
+    outputs = []
+    for length, indices, batch in batches:
+        batch = np.stack(batch)
+        batch_output = kinetic_feature(batch,n_jobs=2)
+        outputs.extend(zip(indices, batch_output))
+    
+    # 根据index对计算结果进行排序
+    outputs.sort(key=itemgetter(0))
+    dynamic_features = [output for index, output in outputs]
+    
+    # End timer
+    end_time = time.time()
+
+    # Calculate elapsed time
+    elapsed_time = end_time - start_time
+    print(f"The code took {elapsed_time} seconds to run.")
     start_time = time.time()
 
     dynamic_features = kinetic_feature(X,n_jobs=1)
-
+    
     # End timer
     end_time = time.time()
 
