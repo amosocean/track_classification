@@ -224,7 +224,7 @@ def _kinetic_feature_vec(single_sample):
         fft_angle[...,0].unsqueeze(dim=-1), fft_angle[...,1].unsqueeze(dim=-1)
     ]
     
-    feature = torch.stack(feature_list,dim=0)
+    feature = torch.stack(feature_list,dim=-1).squeeze()
     
     return feature.cpu()    
     
@@ -250,7 +250,7 @@ def kinetic_feature(sample_list,n_jobs:int = 1):
         
         return feature
     else:
-        sample_list = torch.tensor(sample_list,device="cuda")
+        sample_list = torch.from_numpy(sample_list).cuda()
         #_kinetic_feature_vmap = torch.vmap(_kinetic_feature,in_dims=0,out_dims=0)
         features=_kinetic_feature_vec(sample_list)
         return features.numpy()
