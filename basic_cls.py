@@ -6,7 +6,7 @@ from typing import Dict,List,Tuple
 dir_path="/home/amos/haitun/pycode/source/matlab/"
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader,ConcatDataset
-from aeon.transformations.collection.pad import PaddingTransformer
+#from aeon.transformations.collection.pad import PaddingTransformer
 class DatasetReader:
 
     def __init__(self,matfile_name:str) -> None:
@@ -192,7 +192,7 @@ if __name__ == "__main__":
     from sklearn.gaussian_process import GaussianProcessClassifier
     from sklearn.gaussian_process.kernels import RBF
     from sklearn.decomposition import PCA
-    from aeon.classification.compose import WeightedEnsembleClassifier
+    #from aeon.classification.compose import WeightedEnsembleClassifier
     from utils.fea import kinetic_feature
     
     dataset_list = [SubTrainDataset(i) for i in range(14)]
@@ -263,13 +263,13 @@ if __name__ == "__main__":
 #     sample_list = sample_list[0:3]
 #     category_index_list = category_index_list[0:3]
 # %%
-    tnf = Catch22(outlier_norm=True,catch24=True,replace_nans=True,n_jobs=-1,parallel_backend="loky")
+    #tnf = Catch22(outlier_norm=True,catch24=True,replace_nans=True,n_jobs=-1,parallel_backend="loky")
     clf_01 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
     clf0_14 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
     clf_0 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
     clf_1 = RandomForestClassifier(n_estimators=500,n_jobs=-1)
     clf_2 = RandomForestClassifier(n_estimators=50,n_jobs=-1)
-    pca = PCA(n_components=1)
+    #pca = PCA(n_components=1)
     #clf = Catch22Classifier(estimator=RandomForestClassifier(n_estimators=5))
 #     clf = ElasticEnsemble(
 #     proportion_of_param_options=0.1,

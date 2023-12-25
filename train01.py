@@ -294,7 +294,7 @@ if __name__ == "__main__":
     # dataset=Dataset()
     # print(dataset.get_trajectorys(0,0))
     # x=list(dataset.get_category(0))
-    dataset_list = [SubTrainDataset(i) for i in range(14)]
+    dataset_list = [SubTrainDataset(i) for i in range(2)]
     #dataset_list.extend([SubTrainDataset(i) for i in [5,5,5,9,9,9,12,12,12]])
     datatset_all=ConcatDataset(datasets=dataset_list)
     
@@ -419,7 +419,8 @@ if __name__ == "__main__":
         _1_index =  np.where(np.array(category_index_01_list) == 1)  
         return sample_list,category_index_list,category_index_01_list,_0_index,_1_index
     
-    sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets_split(train_dataset)
+    #sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets_split(train_dataset)
+    sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets(train_dataset)
     # extra_feature = np.stack(extra_feature_list).squeeze()
     print(len(sample_list))
     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TRAIN")
