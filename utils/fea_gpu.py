@@ -25,7 +25,8 @@ def _kinetic_feature(single_sample):
     # angle = single_sample[:,3,:] 
     # timestep = single_sample[:,4,:]
     timestep = timestep-timestep[0]
-    median_T = torch.median(torch.diff(timestep))
+    time_diff = torch.diff(timestep)
+    median_T = torch.median(time_diff)
     median_sample_rate = 1 / median_T
     #theta = angle * np.pi / 180
     points = lat + 1j * lon
@@ -62,7 +63,7 @@ def _kinetic_feature(single_sample):
 
     pt_v = torch.quantile(v, pt_num)
 
-    rate_v = torch.diff(v)
+    rate_v = torch.diff(v)/time_diff
     mean_rate_v = torch.mean(rate_v)
     pt_rate_v = torch.quantile(rate_v, pt_num)
     var_rate_v = torch.var(rate_v)
@@ -88,6 +89,24 @@ def _kinetic_feature(single_sample):
     pt_index = (torch.abs(spectrum - pt_spectrum)).argmin()
     pt_freq_v = (pt_index - (timestep.shape[0]) / 2) / ((timestep.shape[0]) / 2) * median_sample_rate 
 
+    mean_height = torch.mean(height)
+    max_height = torch.quantile(height, 0.95)
+    min_height = torch.min(height)
+    height_50 = torch.quantile(height, 0.5)
+
+    pt_height = torch.quantile(height, pt_num)
+
+    rate_height = torch.diff(height)/time_diff
+    mean_rate_height = torch.mean(rate_height)
+    pt_rate_height = torch.quantile(rate_height, pt_num)
+    var_rate_height = torch.var(rate_height)
+    min_rate_height = torch.min(rate_height)
+    
+    spectrum = torch.fft.fftshift(torch.fft.fft(height))
+    pt_spectrum = torch.quantile(torch.abs(spectrum), pt_num)
+    pt_index = (torch.abs(spectrum - pt_spectrum)).argmin()
+    pt_freq_height = (pt_index - (timestep.shape[0]) / 2) / ((timestep.shape[0]) / 2) * median_sample_rate 
+    
     # mean_angle = torch.mean(angle)
     # max_angle = torch.quantile(angle, 0.95)
     # var_angle = torch.var(angle)
@@ -106,6 +125,7 @@ def _kinetic_feature(single_sample):
     fft_lon = top5freqs(lon)*median_sample_rate
     fft_v = top5freqs(v)*median_sample_rate
     #fft_angle = top5freqs(angle)*median_sample_rate
+    fft_height = top5freqs(height)*median_sample_rate
 
     feature_list = [
         dis, pt_distances, start_1, start_2, mid_1, mid_2, end_1, end_2,
@@ -115,7 +135,11 @@ def _kinetic_feature(single_sample):
         pt_freq, pt_freq_v,
         # mean_angle, max_angle, var_angle, min_angle, angle_20, angle_50, angle_75,
         # mean_rate_angle, max_rate_angle, var_rate_angle, min_rate_angle,
+        mean_height,max_height,min_height,height_50,pt_height,
+        mean_rate_height,pt_rate_height,var_rate_height,min_rate_height,
+        pt_freq_height,
         fft_lat[0], fft_lat[1], fft_lon[0], fft_lon[1], fft_v[0], fft_v[1],
+        fft_height[0],fft_height[1]
         #fft_angle[0], fft_angle[1]
     ]
     feature = torch.stack(feature_list,dim=0)
