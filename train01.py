@@ -4,7 +4,7 @@ import h5py
 import utils.dataset
 import torch
 from typing import Dict,List,Tuple
-dir_path="/home/amos/haitun/pycode/source/matlab/"
+
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader,ConcatDataset
 
@@ -56,7 +56,7 @@ class SubDataset(Dataset):
         #return (trajectory,zone_code) , self.category_index
         #return trajectory , self.
         #return trajectory , self.category_index
-        if self.category_index == 5 or self.category_index == 9 or self.category_index == 10 or self.category_index == 12:
+        if self.category_index == 1:
             index = 1
         else:
             index = 0
@@ -98,7 +98,7 @@ class SubDataset_split(SubDataset):
     
 train_reader = DatasetReader("source/datasets")
 
-class SubTrainDataset(SubDataset_split):
+class SubTrainDataset(SubDataset):
     def __init__(self, category_index) -> None:
         super().__init__(category_index,train_reader)
 
@@ -115,7 +115,7 @@ def print_matrix(label_list,predict_list):
     from sklearn.metrics import confusion_matrix
     conf_mat = confusion_matrix(np.array(label_list), np.array(predict_list))
 
-    #print(conf_mat)
+    print(conf_mat)
     
     from sklearn.metrics import precision_score, recall_score, f1_score,accuracy_score
 
@@ -128,10 +128,10 @@ def print_matrix(label_list,predict_list):
     recall = recall_score(y_true, y_pred, average='macro')
     f1 = f1_score(y_true, y_pred, average='macro')
 
-    # print('Precision: {}'.format(precision))
-    # print('Accuraccy: {}'.format(accuraccy))
-    # print('Recall: {}'.format(recall))
-    #print('F1 Score: {}'.format(f1))
+    print('Precision: {}'.format(precision))
+    print('Accuraccy: {}'.format(accuraccy))
+    print('Recall: {}'.format(recall))
+    print('F1 Score: {}'.format(f1))
     return accuraccy,f1
 
 def predict_vote_func(predictions:List[np.array])->np.array:
@@ -281,50 +281,7 @@ def batch_kinetic(func):
         return dynamic_features
     return wrapper
 
-#%%
-
-if __name__ == "__main__":
-    import time
-    from torch.utils.data import random_split
-    from torch.utils.data import Subset
-    from sklearn.ensemble import RandomForestClassifier
-    from utils.fea_gpu import kinetic_feature
-    from sklearn.model_selection import GridSearchCV,RandomizedSearchCV
-    import random
-    # dataset=Dataset()
-    # print(dataset.get_trajectorys(0,0))
-    # x=list(dataset.get_category(0))
-    dataset_list = [SubTrainDataset(i) for i in range(2)]
-    #dataset_list.extend([SubTrainDataset(i) for i in [5,5,5,9,9,9,12,12,12]])
-    datatset_all=ConcatDataset(datasets=dataset_list)
-    
-    # 假设 dataset 是你的大数据集
-    # 下面的 num1 和 num2 是你想分割成的两个数据集的大小
-    num1 = int(len(datatset_all) * 0.8)  # 比如你想让第一个数据集占80%的数据
-    num2 = len(datatset_all) - num1  # 第二个数据集的大小等于总大小减去第一个的大小
-
-    train_dataset, valid_dataset = random_split(datatset_all, [num1, num2])
-    
-    # dataset_list = [SubTestDataset(i) for i in range(14)]
-    # valid_dataset=ConcatDataset(datasets=dataset_list)
-    # mydata=DataLoader(dataset1,batch_size=1,shuffle=True)
-    # for index, (x, y) in enumerate(mydata):
-    #     x=x
-    #     y=y
-    #     print(index)
-
-#%% 
-# """调试用，缩小数据集"""
-#     def random_subset(dataset, fraction):
-#         length = len(dataset)
-#         indices = np.random.choice(np.arange(length), size=int(fraction * length), replace=False)
-#         return Subset(dataset, indices)
-
-#     # 假设 dataset 是你的原始数据集
-#     dataset1 = random_subset(dataset1, 0.1)
-
-
-    def get_tracksets(dataset):
+def get_tracksets(dataset):
         mydata=DataLoader(dataset,batch_size=1,shuffle=False)
         sample_list = []
         category_index_list = []
@@ -352,88 +309,114 @@ if __name__ == "__main__":
         _1_index =  np.where(np.array(category_index_01_list) == 1)  
         return sample_list,category_index_list,category_index_01_list,_0_index,_1_index
     
-    def get_tracksets_split(dataset):
-        mydata=DataLoader(dataset,batch_size=1,shuffle=False)
-        sample_list = []
-        category_index_list = []
-        category_index_01_list = []
-        # filename_list = []
-        # extra_feature_list = []
-        for data in mydata:
-            # filename_list.append(data[3])
-            # extra_feature_list.append(data[4])
-            category_index = int(data[1].numpy())
-            category_index = [category_index]*len(data[0])
-            #category_index_vector = np.tile(category_index, sample.shape[0])
-            category_index_list.extend(category_index)
-            
-            category_index_01 = int(data[2].numpy())
-            category_index_01 = [category_index_01]*len(data[0])
-            #category_index_vector = np.tile(category_index, sample.shape[0])
-            category_index_01_list.extend(category_index_01)
-            #category_index_list.append(category_index_vector)
-            
-            window_list=data[0]
-            window_list = [window.squeeze(dim=0).numpy() for window in window_list]
-            
-            # t= np.isnan(sample)
-            # assert not np.any(t) , "Has Nan!"
-            sample_list.extend(window_list)
-            
-        _0_index = np.where(np.array(category_index_01_list) == 0)
-        _1_index =  np.where(np.array(category_index_01_list) == 1)  
-        return sample_list,category_index_list,category_index_01_list,_0_index,_1_index
+def get_tracksets_split(dataset):
+    mydata=DataLoader(dataset,batch_size=1,shuffle=False)
+    sample_list = []
+    category_index_list = []
+    category_index_01_list = []
+    # filename_list = []
+    # extra_feature_list = []
+    for data in mydata:
+        # filename_list.append(data[3])
+        # extra_feature_list.append(data[4])
+        category_index = int(data[1].numpy())
+        category_index = [category_index]*len(data[0])
+        #category_index_vector = np.tile(category_index, sample.shape[0])
+        category_index_list.extend(category_index)
+        
+        category_index_01 = int(data[2].numpy())
+        category_index_01 = [category_index_01]*len(data[0])
+        #category_index_vector = np.tile(category_index, sample.shape[0])
+        category_index_01_list.extend(category_index_01)
+        #category_index_list.append(category_index_vector)
+        
+        window_list=data[0]
+        window_list = [window.squeeze(dim=0).numpy() for window in window_list]
+        
+        # t= np.isnan(sample)
+        # assert not np.any(t) , "Has Nan!"
+        sample_list.extend(window_list)
+        
+    _0_index = np.where(np.array(category_index_01_list) == 0)
+    _1_index =  np.where(np.array(category_index_01_list) == 1)  
+    return sample_list,category_index_list,category_index_01_list,_0_index,_1_index
+
+def get_tracksets_split_test(dataset):
+    mydata=DataLoader(dataset,batch_size=1,shuffle=False)
+    sample_list = []
+    category_index_list = []
+    category_index_01_list = []
+    # filename_list = []
+    # extra_feature_list = []
+    for data in mydata:
+        # for split in data[0]:
+        #     split.squeeze(dim=0).shape[0].numpy()
+        #     t = 1
+        data[0] = [split for split in data[0] if split.shape[-1]==50]
+        sample = random.choice(data[0]).squeeze(dim=0).numpy()
+        # k = min(len(data[0]),3)
+        # sample = random.sample(data[0],k).squeeze(dim=0).numpy()
+        # filename_list.append(data[3])
+        # extra_feature_list.append(data[4])
+        category_index = int(data[1].numpy())
+        #category_index_vector = np.tile(category_index, sample.shape[0])
+        category_index_list.append(category_index)
+        
+        category_index_01 = int(data[2].numpy())
+        #category_index_vector = np.tile(category_index, sample.shape[0])
+        category_index_01_list.append(category_index_01)
+        #category_index_list.append(category_index_vector)
+        
+        
+        # t= np.isnan(sample)
+        # assert not np.any(t) , "Has Nan!"
+        sample_list.append(sample)
+        
+    _0_index = np.where(np.array(category_index_01_list) == 0)
+    _1_index =  np.where(np.array(category_index_01_list) == 1)  
+    return sample_list,category_index_list,category_index_01_list,_0_index,_1_index
+
+#%%
+
+if __name__ == "__main__":
+    import time
+    from torch.utils.data import random_split
+    from torch.utils.data import Subset
+    from sklearn.ensemble import RandomForestClassifier
+    from utils.fea_gpu import kinetic_feature
+    from sklearn.model_selection import GridSearchCV,RandomizedSearchCV
+    import random
+
+    dataset_list = [SubTrainDataset(i) for i in range(2)]
+    #dataset_list.extend([SubTrainDataset(i) for i in [5,5,5,9,9,9,12,12,12]])
+    datatset_all=ConcatDataset(datasets=dataset_list)
     
-    def get_tracksets_split_test(dataset):
-        mydata=DataLoader(dataset,batch_size=1,shuffle=False)
-        sample_list = []
-        category_index_list = []
-        category_index_01_list = []
-        # filename_list = []
-        # extra_feature_list = []
-        for data in mydata:
-            # for split in data[0]:
-            #     split.squeeze(dim=0).shape[0].numpy()
-            #     t = 1
-            data[0] = [split for split in data[0] if split.shape[-1]==50]
-            sample = random.choice(data[0]).squeeze(dim=0).numpy()
-            # k = min(len(data[0]),3)
-            # sample = random.sample(data[0],k).squeeze(dim=0).numpy()
-            # filename_list.append(data[3])
-            # extra_feature_list.append(data[4])
-            category_index = int(data[1].numpy())
-            #category_index_vector = np.tile(category_index, sample.shape[0])
-            category_index_list.append(category_index)
-            
-            category_index_01 = int(data[2].numpy())
-            #category_index_vector = np.tile(category_index, sample.shape[0])
-            category_index_01_list.append(category_index_01)
-            #category_index_list.append(category_index_vector)
-            
-            
-            # t= np.isnan(sample)
-            # assert not np.any(t) , "Has Nan!"
-            sample_list.append(sample)
-            
-        _0_index = np.where(np.array(category_index_01_list) == 0)
-        _1_index =  np.where(np.array(category_index_01_list) == 1)  
-        return sample_list,category_index_list,category_index_01_list,_0_index,_1_index
+    # 假设 dataset 是你的大数据集
+    # 下面的 num1 和 num2 是你想分割成的两个数据集的大小
+    num1 = int(len(datatset_all) * 0.8)  # 比如你想让第一个数据集占80%的数据
+    num2 = len(datatset_all) - num1  # 第二个数据集的大小等于总大小减去第一个的大小
+
+    train_dataset, valid_dataset = random_split(datatset_all, [num1, num2])
+    
+
+#%% 
+# """调试用，缩小数据集"""
+#     def random_subset(dataset, fraction):
+#         length = len(dataset)
+#         indices = np.random.choice(np.arange(length), size=int(fraction * length), replace=False)
+#         return Subset(dataset, indices)
+
+#     # 假设 dataset 是你的原始数据集
+#     dataset1 = random_subset(dataset1, 0.1)
+
+
+    
     
     #sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets_split(train_dataset)
     sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets(train_dataset)
     # extra_feature = np.stack(extra_feature_list).squeeze()
     print(len(sample_list))
-    #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TRAIN")
-    #convert_collection(t,"df-list")
-#     clf = Catch22Classifier(
-#     estimator= RandomForestClassifier(max_depth=50, n_estimators=10, max_features=2, random_state=42),
-#     outlier_norm=True,
-#     random_state=0,
-#     n_jobs=16,
-# )
-# # %%
-#     sample_list = sample_list[0:3]
-#     category_index_list = category_index_list[0:3]
+
 # %%
     param_grid = {
     'n_estimators': [50,80,150],
@@ -444,86 +427,25 @@ if __name__ == "__main__":
 
 
     clf_01 = RandomForestClassifier(n_estimators=120,n_jobs=-1,oob_score=True)
-    clf_0 = RandomForestClassifier(n_estimators=150,n_jobs=-1,oob_score=True)
-    clf_1 = RandomForestClassifier(n_estimators=80,n_jobs=-1,oob_score=True)
-    clf0_14 = RandomForestClassifier(n_estimators=150,n_jobs=-1,oob_score=True)
-
     # clf_01 = GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=10,n_jobs=-1) 
-    # clf_0 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=10,n_jobs=-1) 
-    # clf_1 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=10,n_jobs=-1) 
-    # clf0_14 =  GridSearchCV(RandomForestClassifier(n_jobs=-1),param_grid=param_grid,cv=10,n_jobs=-1) 
-    y = np.array(category_index_list)
-    
-    from operator import itemgetter 
-    #X=np.array(sample_list)
-    # X = np.concatenate(sample_list,axis=0)
-    X=sample_list
-    # End timer
-    
-    dynamic_features =batch_kinetic(kinetic_feature)(sample_list)
-    
-    # print(f"The code took {elapsed_time} seconds to run.")
-    #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
-    #catch22_features = np.array(tnf.fit_transform(X))
-    #catch22_features = pca.fit_transform(catch22_features)
-    #all_features = np.concatenate([dynamic_features,catch22_features],axis=-1)
-    
-    clf_01.fit(dynamic_features,np.array(category_index_01_list))
-    clf_0.fit(dynamic_features[_0_index], y[_0_index])
-    clf_1.fit(dynamic_features[_1_index], y[_1_index])
-    clf0_14.fit(dynamic_features, y)
-    print(clf_01.oob_score_)
-    print(clf_0.oob_score_)
-    print(clf_1.oob_score_)
-    print(clf0_14.oob_score_)
-    
-    # print(clf_01.best_params_)
-    # print(clf_0 .best_params_)
-    # print(clf_1 .best_params_)
-    # print(clf0_14 .best_params_)
-    
-    # clf_01 = clf_01.best_estimator_
-    # clf_0 = clf_0.best_estimator_
-    # clf_1 = clf_1.best_estimator_
-    # clf0_14 = clf0_14.best_estimator_
- #%% validation   
-    sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets_split_test(valid_dataset)
-    # extra_feature = np.stack(extra_feature_list).squeeze()
-    print(len(sample_list))
-#     #aeon.datasets.write_to_tsfile(X=sample_list,path="./dataset",y=category_index_list,problem_name="haitun_TEST")
 
-    
-        
-    direct_predict_list,direct_acc,direct_f1=valid_func(clf=[clf0_14,clf0_14],X_list=sample_list,y_list=category_index_list)
-    # valid_func(clf=[clf_01,clf_01],X_list=sample_list,y_list=category_index_01_list)
+    y = np.array(category_index_list)
+    X=sample_list
+    dynamic_features =kinetic_feature(sample_list,n_jobs=1)
+
+    clf_01.fit(dynamic_features,np.array(category_index_01_list))
+    print(clf_01.oob_score_)
+
+ #%% validation   
+    sample_list,category_index_list,category_index_01_list,_0_index,_1_index = get_tracksets(valid_dataset)
+    print(len(sample_list))
     
     #%% 01分类
-    dynamic_features = np.array(batch_kinetic(kinetic_feature)(sample_list))
+    dynamic_features = np.array(kinetic_feature(sample_list))
     #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
     prob = clf_01.predict_proba(dynamic_features)
     predict_list_01 = np.argmax(prob,axis=1)
     f1_bio,acc_bio = print_matrix(predict_list_01,category_index_01_list)
-    prdict_0_index = np.where(predict_list_01 == 0)
-    prdict_1_index = np.where(predict_list_01 == 1)
-    #%% 
-    # 0细分类
-    predict_0_list = clf_0.predict(dynamic_features[prdict_0_index])
-    
-    # 1细分类
-    predict_1_list = clf_1.predict(dynamic_features[prdict_1_index])
-    
-    predict_combine = np.zeros(len(sample_list))
-    predict_combine[prdict_0_index] = predict_0_list
-    predict_combine[prdict_1_index] = predict_1_list
-    predict_combine = np.int64(predict_combine).tolist()
-    f1_multi,acc_multi = print_matrix(predict_combine,category_index_list)
-    pen = pen_calculate(predict_list_01,predict_combine,category_index_01_list)
-    print('Two stage F1 Score: {}'.format(((f1_bio+f1_multi)/2+(acc_bio+acc_multi)/2)/2-pen))
-    print(pen)
-    
-    pen = pen_calculate(predict_list_01,direct_predict_list,category_index_01_list)
-    print('Direct Combine F1 Score with penalty: {}'.format(((f1_bio+direct_f1)/2+(acc_bio+direct_acc)/2)/2-pen))
-    print(pen)
     exit()
     #%% 比赛部分
     racedataset = SubRaceDataset(0)

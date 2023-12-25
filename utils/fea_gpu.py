@@ -16,11 +16,9 @@ def top5freqs(input_array):
 
     return top_freqs
 
-#@torch.jit.script
-#@torch.compile
 def _kinetic_feature(single_sample):
     pt_num = 0.95
-    lat, lon, v, angle, timestep = single_sample[0:5]
+    lat, lon, height,v, timestep = single_sample[0:5]
     # lat = single_sample[:,0,:] 
     # lon = single_sample[:,1,:] 
     # v = single_sample[:,2,:] 
@@ -29,9 +27,9 @@ def _kinetic_feature(single_sample):
     timestep = timestep-timestep[0]
     median_T = torch.median(torch.diff(timestep))
     median_sample_rate = 1 / median_T
-    theta = angle * np.pi / 180
+    #theta = angle * np.pi / 180
     points = lat + 1j * lon
-    v_vec = v * torch.exp(1j * theta)
+    #v_vec = v * torch.exp(1j * theta)
 
     diff = torch.diff(points)
     # if torch.any(diff.imag > 350):
@@ -75,48 +73,50 @@ def _kinetic_feature(single_sample):
     mid_111 = lat[int(end / 4) * 3]
     mid_222 = lon[int(end / 4) * 3]
 
-    unit_complex = torch.exp(1j * theta)
-    angle_diff = torch.angle(diff / unit_complex[1:])
-    angle_diff_max = torch.quantile(angle_diff, 0.95)
-    angle_diff_mean = torch.mean(angle_diff)
+    # unit_complex = torch.exp(1j * theta)
+    # angle_diff = torch.angle(diff / unit_complex[1:])
+    # angle_diff_max = torch.quantile(angle_diff, 0.95)
+    # angle_diff_mean = torch.mean(angle_diff)
 
     spectrum = torch.fft.fftshift(torch.fft.fft(points))
     pt_spectrum = torch.quantile(torch.abs(spectrum), pt_num)
     pt_index = (torch.abs(spectrum - pt_spectrum)).argmin()
     pt_freq = (pt_index - (timestep.shape[0]) / 2) / ((timestep.shape[0]) / 2) * median_sample_rate 
 
-    spectrum = torch.fft.fftshift(torch.fft.fft(v_vec))
+    spectrum = torch.fft.fftshift(torch.fft.fft(v))
     pt_spectrum = torch.quantile(torch.abs(spectrum), pt_num)
     pt_index = (torch.abs(spectrum - pt_spectrum)).argmin()
     pt_freq_v = (pt_index - (timestep.shape[0]) / 2) / ((timestep.shape[0]) / 2) * median_sample_rate 
 
-    mean_angle = torch.mean(angle)
-    max_angle = torch.quantile(angle, 0.95)
-    var_angle = torch.var(angle)
-    min_angle = torch.min(angle)
-    angle_20 = torch.quantile(angle, 0.2)
-    angle_50 = torch.quantile(angle, 0.5)
-    angle_75 = torch.quantile(angle, 0.75)
+    # mean_angle = torch.mean(angle)
+    # max_angle = torch.quantile(angle, 0.95)
+    # var_angle = torch.var(angle)
+    # min_angle = torch.min(angle)
+    # angle_20 = torch.quantile(angle, 0.2)
+    # angle_50 = torch.quantile(angle, 0.5)
+    # angle_75 = torch.quantile(angle, 0.75)
 
-    rate_angle = torch.diff(angle) 
-    mean_rate_angle = torch.mean(rate_angle)
-    max_rate_angle = torch.max(rate_angle)
-    var_rate_angle = torch.var(rate_angle)
-    min_rate_angle = torch.min(rate_angle)
+    # rate_angle = torch.diff(angle) 
+    # mean_rate_angle = torch.mean(rate_angle)
+    # max_rate_angle = torch.max(rate_angle)
+    # var_rate_angle = torch.var(rate_angle)
+    # min_rate_angle = torch.min(rate_angle)
 
     fft_lat = top5freqs(lat)*median_sample_rate
     fft_lon = top5freqs(lon)*median_sample_rate
     fft_v = top5freqs(v)*median_sample_rate
-    fft_angle = top5freqs(angle)*median_sample_rate
+    #fft_angle = top5freqs(angle)*median_sample_rate
 
     feature_list = [
         dis, pt_distances, start_1, start_2, mid_1, mid_2, end_1, end_2,
         mean_v, max_v, min_v, v_50, mean_rate_v, var_rate_v, min_rate_v,
         pt_v, pt_rate_v, mid_11, mid_22, mid_111, mid_222,
-        angle_diff_max, angle_diff_mean, pt_freq, pt_freq_v,
-        mean_angle, max_angle, var_angle, min_angle, angle_20, angle_50, angle_75,
-        mean_rate_angle, max_rate_angle, var_rate_angle, min_rate_angle,
-        fft_lat[0], fft_lat[1], fft_lon[0], fft_lon[1], fft_v[0], fft_v[1], fft_angle[0], fft_angle[1]
+        #angle_diff_max, angle_diff_mean, 
+        pt_freq, pt_freq_v,
+        # mean_angle, max_angle, var_angle, min_angle, angle_20, angle_50, angle_75,
+        # mean_rate_angle, max_rate_angle, var_rate_angle, min_rate_angle,
+        fft_lat[0], fft_lat[1], fft_lon[0], fft_lon[1], fft_v[0], fft_v[1],
+        #fft_angle[0], fft_angle[1]
     ]
     feature = torch.stack(feature_list,dim=0)
     

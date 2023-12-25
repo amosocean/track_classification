@@ -11,6 +11,17 @@ def process_file(file_path):
     # 将DataFrame转换为numpy数组
     numpy_array = df.to_numpy(dtype=np.float64,na_value=0)
     numpy_array = numpy_array[:, np.concatenate([np.arange(1, numpy_array.shape[1]), [0]])]
+    
+    # df = pd.read_csv('./example.csv', sep=' ', header=None)
+
+    # # 把最后一列时间字符串转换为日期格式
+    # df[4] = pd.to_datetime(df[4] + ' ' + df[5]).astype(int) / 10**9
+    # # 删除原始的时间列
+    # df = df.drop(5, axis=1)
+    # df = df.dropna()
+    # df = pd.DataFrame(df)
+    # numpy_array = df.values
+    
     return numpy_array.T
 
 def Readcsv(dataset_folder):
