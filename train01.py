@@ -51,17 +51,11 @@ class SubDataset(Dataset):
         #(trajectory,zone_code)=self.datareader.get_trajectorys(self.category_index,trajectory_index)
         
         trajectory = self.trajectory[index]
-        # file_name = self.file_names[index]
-        # zones = self.extra_fea[index,:]
-        #return (trajectory,zone_code) , self.category_index
-        #return trajectory , self.
-        #return trajectory , self.category_index
-        if self.category_index == 1:
-            index = 1
-        else:
-            index = 0
-        #return trajectory , self.category_index, index, file_name, zones
-        return trajectory , self.category_index, index
+        # if self.category_index == 1:
+        #     index = 1
+        # else:
+        #     index = 0
+        return trajectory , self.category_index, self.category_index
     def __len__(self):
         #return self.datareader.get_length_trajectory(self.category_index)
         return self.trajectory_num
@@ -387,7 +381,7 @@ if __name__ == "__main__":
     from sklearn.model_selection import GridSearchCV,RandomizedSearchCV
     import random
 
-    dataset_list = [SubTrainDataset(i) for i in range(2)]
+    dataset_list = [SubTrainDataset(i) for i in iter([0,1,5])]
     #dataset_list.extend([SubTrainDataset(i) for i in [5,5,5,9,9,9,12,12,12]])
     datatset_all=ConcatDataset(datasets=dataset_list)
     
@@ -443,8 +437,9 @@ if __name__ == "__main__":
     #%% 01分类
     dynamic_features = np.array(kinetic_feature(sample_list))
     #dynamic_features = np.concatenate([dynamic_features,extra_feature],axis=-1)
-    prob = clf_01.predict_proba(dynamic_features)
-    predict_list_01 = np.argmax(prob,axis=1)
+    # prob = clf_01.predict_proba(dynamic_features)
+    # predict_list_01 = np.argmax(prob,axis=1)
+    predict_list_01 = clf_01.predict(dynamic_features)
     f1_bio,acc_bio = print_matrix(predict_list_01,category_index_01_list)
     exit()
     #%% 比赛部分
